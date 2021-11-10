@@ -564,6 +564,12 @@ t.test('workspaces', async t => {
     pacote: {
       packument,
     },
+    'proc-log': {
+      warn: (msg) => {
+        warnMsg = msg
+      },
+      silly: () => {},
+    },
   })
   const config = {
     unicode: false,
@@ -571,11 +577,6 @@ t.test('workspaces', async t => {
   }
   let warnMsg
   const npm = mockNpm({
-    log: {
-      warn: (msg) => {
-        warnMsg = msg
-      },
-    },
     config,
     localPrefix: testDir,
   })

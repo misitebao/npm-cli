@@ -9,36 +9,18 @@ const npm = {
   output: (...args) => mocks.output(...args),
 }
 
-const makeToken = (_npm, otherMocks) => {
-  const Token = t.mock('../../../lib/commands/token.js', {
-    '../../../lib/utils/otplease.js': (opts, fn) => {
-      return Promise.resolve().then(() => fn(opts))
-    },
-    '../../../lib/utils/read-user-info.js': mocks.readUserInfo,
-    'npm-profile': mocks.profile,
-    ...otherMocks,
-  })
-  return new Token(_npm)
-}
+const Token = t.mock('../../../lib/commands/token.js', {
+  '../../../lib/utils/otplease.js': (opts, fn) => {
+    return Promise.resolve().then(() => fn(opts))
+  },
+  '../../../lib/utils/read-user-info.js': mocks.readUserInfo,
+  'npm-profile': mocks.profile,
+  npmlog: mocks.log,
+})
 
-const tokenWithMocks = (mockRequests = {}) => {
-  const otherMocks = {
-    npmlog: {},
-    'proc-log': {},
-  }
-
+const tokenWithMocks = mockRequests => {
   for (const mod in mockRequests) {
-    if (mod === 'log') {
-      const { info, gauge, newItem } = mockRequests.log
-      if (gauge) {
-        otherMocks.npmlog.gauge = gauge
-      }
-      if (newItem) {
-        otherMocks.npmlog.newItem = newItem
-      }
-      otherMocks['proc-log'] = { info }
-      delete mockRequests.log
-    } else if (mod === 'npm') {
+    if (mod === 'npm') {
       mockRequests.npm = { ...npm, ...mockRequests.npm }
     } else {
       if (typeof mockRequests[mod] === 'function') {
@@ -65,7 +47,7 @@ const tokenWithMocks = (mockRequests = {}) => {
     }
   }
 
-  const token = makeToken(mockRequests.npm || npm, otherMocks)
+  const token = new Token(mockRequests.npm || npm)
   return [token, reset]
 }
 

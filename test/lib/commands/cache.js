@@ -142,6 +142,9 @@ const Cache = t.mock('../../../lib/commands/cache.js', {
     silly: (...args) => {
       logOutput.push(['silly', ...args])
     },
+    warn: (...args) => {
+      logOutput.push(['warn', ...args])
+    },
   },
 })
 
@@ -151,11 +154,6 @@ const npm = mockNpm({
   config: { force: false },
   output: (msg) => {
     outputOutput.push(msg)
-  },
-  log: {
-    warn: (...args) => {
-      logOutput.push(['warn', ...args])
-    },
   },
 })
 const cache = new Cache(npm)

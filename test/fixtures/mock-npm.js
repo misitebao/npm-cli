@@ -97,32 +97,11 @@ class MockNpm {
   }
 }
 
-const FakeMockNpm = ({ log, ...base } = {}, t) => {
-  const npm = new MockNpm(base)
-
-  // XXX: A stopgap until real mock is used in more places
-  // we dont store the log on npm anymore so this takes the way
-  // that fake mock npm previously mocked logs and sets them
-  // up as real mocks and returns the results on the instance
-  if (log && t) {
-    const mocks = {}
-    for (const [key, value] of Object.entries(log)) {
-      if (LEVELS.includes(key)) {
-        if (!mocks['proc-log']) {
-          mocks['proc-log'] = {}
-        }
-        mocks['proc-log'][key] = value
-      } else {
-        if (!mocks.npmlog) {
-          mocks.npmlog = {}
-        }
-        mocks.npmlog[key] = value
-      }
-    }
-    npm.mocks = mocks
+const FakeMockNpm = (base = {}) => {
+  if (base.log) {
+    throw new Error('I need to find all of these')
   }
-
-  return npm
+  return new MockNpm(base)
 }
 
 module.exports = {
