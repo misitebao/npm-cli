@@ -1,5 +1,6 @@
 const t = require('tap')
 const spawk = require('spawk')
+const { logShim } = require('../../../lib/utils/proc-log-shim')
 const { real: mockNpm } = require('../../fixtures/mock-npm')
 
 spawk.preventUnmatched()
@@ -25,7 +26,7 @@ t.test('should run stop script from package.json', async t => {
   const { Npm } = mockNpm(t)
   const npm = new Npm()
   await npm.load()
-  npm.log.level = 'silent'
+  logShim.level = 'silent'
   npm.localPrefix = prefix
   const [scriptShell] = makeSpawnArgs({ path: prefix })
   const script = spawk.spawn(scriptShell, (args) => {

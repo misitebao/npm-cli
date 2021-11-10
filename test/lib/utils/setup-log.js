@@ -11,9 +11,6 @@ t.afterEach(() => {
 
 const WARN_CALLED = []
 const npmlog = {
-  warn: (...args) => {
-    WARN_CALLED.push(args)
-  },
   levels: {
     silly: -Infinity,
     verbose: 1000,
@@ -25,7 +22,6 @@ const npmlog = {
     error: 5000,
     silent: Infinity,
   },
-  settings,
   enableColor: () => {
     settings.color = true
   },
@@ -58,6 +54,12 @@ const npmlog = {
   },
 }
 
+const log = {
+  warn: (...args) => {
+    WARN_CALLED.push(args)
+  },
+}
+
 const EXPLAIN_CALLED = []
 const setupLog = t.mock('../../../lib/utils/setup-log.js', {
   '../../../lib/utils/explain-eresolve.js': {
@@ -67,6 +69,7 @@ const setupLog = t.mock('../../../lib/utils/setup-log.js', {
     },
   },
   npmlog,
+  'proc-log': log,
 })
 
 const config = obj => ({
@@ -79,19 +82,19 @@ const config = obj => ({
 })
 
 t.test('setup with color=always and unicode', t => {
-  npmlog.warn('ERESOLVE', 'hello', { some: 'object' })
+  log.warn('ERESOLVE', 'hello', { some: 'object' })
   t.strictSame(EXPLAIN_CALLED, [], 'log.warn() not patched yet')
   t.strictSame(WARN_CALLED, [['ERESOLVE', 'hello', { some: 'object' }]])
   WARN_CALLED.length = 0
 
-  setupLog(config({
+  const patchedLog = setupLog(config({
     loglevel: 'warn',
     color: 'always',
     unicode: true,
     progress: false,
   }))
 
-  npmlog.warn('ERESOLVE', 'hello', { some: { other: 'object' } })
+  patchedLog.warn('ERESOLVE', 'hello', { some: { other: 'object' } })
   t.strictSame(EXPLAIN_CALLED, [[{ some: { other: 'object' } }, true, 2]],
     'log.warn(ERESOLVE) patched to call explainEresolve()')
   t.strictSame(WARN_CALLED, [
@@ -100,7 +103,7 @@ t.test('setup with color=always and unicode', t => {
   ], 'warn the explanation')
   EXPLAIN_CALLED.length = 0
   WARN_CALLED.length = 0
-  npmlog.warn('some', 'other', 'thing')
+  patchedLog.warn('some', 'other', 'thing')
   t.strictSame(EXPLAIN_CALLED, [], 'do not try to explain other things')
   t.strictSame(WARN_CALLED, [['some', 'other', 'thing']], 'warnings passed through')
 

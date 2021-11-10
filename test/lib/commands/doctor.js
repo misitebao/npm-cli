@@ -2,6 +2,7 @@ const t = require('tap')
 
 const { join } = require('path')
 const fs = require('fs')
+const npmlog = require('npmlog')
 const ansiTrim = require('../../../lib/utils/ansi-trim.js')
 const isWindows = require('../../../lib/utils/is-windows.js')
 
@@ -205,7 +206,7 @@ t.test('node versions', t => {
         npm.globalDir = dir
         npm.localBin = dir
         npm.globalBin = dir
-        npm.log.level = 'info'
+        npmlog.level = 'info'
 
         st.teardown(() => {
           delete npm.cache
@@ -214,7 +215,7 @@ t.test('node versions', t => {
           delete npm.globalDir
           delete npm.localBin
           delete npm.globalBin
-          npm.log.level = 'error'
+          npmlog.level = 'error'
           clearLogs()
         })
 

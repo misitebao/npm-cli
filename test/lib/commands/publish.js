@@ -6,8 +6,8 @@ const fs = require('fs')
 // it from these tests, which only interact with lib/publish.js, which assumes
 // that the code that is requiring and calling lib/publish.js has already
 // taken care of the loglevel
-const log = require('npmlog')
-log.level = 'silent'
+const npmlog = require('npmlog')
+npmlog.level = 'silent'
 
 t.cleanSnapshot = data => {
   return data.replace(/^ *"gitHead": .*$\n/gm, '')
@@ -19,7 +19,7 @@ const defaults = Object.entries(definitions).reduce((defaults, [key, def]) => {
   return defaults
 }, {})
 
-t.afterEach(() => (log.level = 'silent'))
+t.afterEach(() => (npmlog.level = 'silent'))
 
 t.test(
   /* eslint-disable-next-line max-len */
@@ -140,7 +140,7 @@ t.test('if loglevel=info and json, should not output package contents', async t 
     ),
   })
 
-  log.level = 'info'
+  npmlog.level = 'info'
   const Publish = t.mock('../../../lib/commands/publish.js', {
     '../../../lib/utils/tar.js': {
       getContents: () => ({
@@ -188,7 +188,7 @@ t.test(
       ),
     })
 
-    log.level = 'silent'
+    npmlog.level = 'silent'
     const Publish = t.mock('../../../lib/commands/publish.js', {
       '../../../lib/utils/tar.js': {
         getContents: () => ({
@@ -237,7 +237,7 @@ t.test(
       ),
     })
 
-    log.level = 'info'
+    npmlog.level = 'info'
     const Publish = t.mock('../../../lib/commands/publish.js', {
       '../../../lib/utils/tar.js': {
         getContents: () => ({
@@ -595,14 +595,14 @@ t.test('workspaces', t => {
   const publish = new Publish(npm)
 
   t.test('all workspaces', async t => {
-    log.level = 'info'
+    npmlog.level = 'info'
     await publish.execWorkspaces([], [])
     t.matchSnapshot(publishes, 'should publish all workspaces')
     t.matchSnapshot(outputs, 'should output all publishes')
   })
 
   t.test('one workspace', async t => {
-    log.level = 'info'
+    npmlog.level = 'info'
     await publish.execWorkspaces([], ['workspace-a'])
     t.matchSnapshot(publishes, 'should publish given workspace')
     t.matchSnapshot(outputs, 'should output one publish')
@@ -614,7 +614,7 @@ t.test('workspaces', t => {
   })
 
   t.test('json', async t => {
-    log.level = 'info'
+    npmlog.level = 'info'
     npm.config.set('json', true)
     await publish.execWorkspaces([], [])
     t.matchSnapshot(publishes, 'should publish all workspaces')

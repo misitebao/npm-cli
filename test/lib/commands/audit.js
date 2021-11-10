@@ -1,5 +1,5 @@
 const t = require('tap')
-const { fake: mockNpm } = require('../../fixtures/mock-npm')
+const { fake: mockNpm, fakeLogs } = require('../../fixtures/mock-npm')
 
 t.test('should audit using Arborist', t => {
   let ARB_ARGS = null
@@ -91,7 +91,7 @@ t.test('report endpoint error', t => {
   for (const json of [true, false]) {
     t.test(`json=${json}`, async t => {
       const OUTPUT = []
-      const LOGS = []
+      const LOGS = fakeLogs()
       const npm = mockNpm({
         prefix: 'foo',
         command: 'audit',
@@ -101,14 +101,12 @@ t.test('report endpoint error', t => {
         flatOptions: {
           json,
         },
-        log: {
-          warn: (...warning) => LOGS.push(warning),
-        },
         output: (...msg) => {
           OUTPUT.push(msg)
         },
       })
       const Audit = t.mock('../../../lib/commands/audit.js', {
+        ...LOGS.mocks,
         'npm-audit-report': () => {
           throw new Error('should not call audit report when there are errors')
         },
@@ -153,7 +151,7 @@ t.test('report endpoint error', t => {
             : 'i had a vuln but i eated it lol',
         ],
       ])
-      t.strictSame(LOGS, [['audit', 'hello, this didnt work']])
+      t.strictSame(LOGS.logs, [['audit', 'hello, this didnt work']])
     })
   }
   t.end()

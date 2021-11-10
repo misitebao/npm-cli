@@ -128,7 +128,6 @@ t.test('npm.load', async t => {
     npm.cache = newCache
     t.equal(npm.config.get('cache'), newCache, 'cache setter sets config')
     t.equal(npm.cache, newCache, 'cache getter gets new config')
-    t.equal(npm.log, npmlog, 'npmlog getter')
     t.equal(npm.lockfileVersion, 2, 'lockfileVersion getter')
     t.equal(npm.prefix, npm.localPrefix, 'prefix is local prefix')
     t.not(npm.prefix, npm.globalPrefix, 'prefix is not global prefix')
@@ -471,8 +470,8 @@ t.test('timings', t => {
   const npm = new Npm()
   process.emit('time', 'foo')
   process.emit('time', 'bar')
-  t.match(npm.timers.get('foo'), Number, 'foo timer is a number')
-  t.match(npm.timers.get('bar'), Number, 'foo timer is a number')
+  t.match(npm.timers.unfinished.get('foo'), Number, 'foo timer is a number')
+  t.match(npm.timers.unfinished.get('bar'), Number, 'foo timer is a number')
   process.emit('timeEnd', 'foo')
   process.emit('timeEnd', 'bar')
   process.emit('timeEnd', 'baz')
@@ -486,32 +485,32 @@ t.test('timings', t => {
       'baz',
     ],
   ])
-  t.notOk(npm.timers.has('foo'), 'foo timer is gone')
-  t.notOk(npm.timers.has('bar'), 'bar timer is gone')
-  t.match(npm.timings, { foo: Number, bar: Number })
+  t.notOk(npm.timers.unfinished.has('foo'), 'foo timer is gone')
+  t.notOk(npm.timers.unfinished.has('bar'), 'bar timer is gone')
+  t.match(npm.timers.finished, { foo: Number, bar: Number })
   t.end()
 })
 
 t.test('output clears progress and console.logs the message', t => {
-  const mock = mockNpm(t)
+  let showingProgress = true
+  const mock = mockNpm(t, {
+    npmlog: {
+      clearProgress: () => showingProgress = false,
+      showProgress: () => showingProgress = true,
+      ...npmlog,
+    },
+  })
   const { Npm, logs } = mock
   const npm = new Npm()
   npm.output = mock.npmOutput
   const { log } = console
-  const { log: { clearProgress, showProgress } } = npm
-  let showingProgress = true
-  npm.log.clearProgress = () => showingProgress = false
-  npm.log.showProgress = () => showingProgress = true
   console.log = (...args) => {
     t.equal(showingProgress, false, 'should not be showing progress right now')
     logs.push(args)
   }
   t.teardown(() => {
     console.log = log
-    npm.log.showProgress = showProgress
-    npm.log.clearProgress = clearProgress
   })
-
   npm.output('hello')
   t.strictSame(logs, [['hello']])
   t.end()

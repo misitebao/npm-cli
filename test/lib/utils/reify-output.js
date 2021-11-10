@@ -1,7 +1,7 @@
 const t = require('tap')
 
-const log = require('npmlog')
-log.level = 'warn'
+const { logShim } = require('../../../lib/utils/proc-log-shim')
+logShim.level = 'warn'
 
 t.cleanSnapshot = str => str.replace(/in [0-9]+m?s/g, 'in {TIME}')
 
@@ -237,8 +237,8 @@ t.test('showing and not showing audit report', async t => {
     npm.output = out => {
       t.fail('should not get output when silent', { actual: out })
     }
-    t.teardown(() => log.level = 'warn')
-    log.level = 'silent'
+    t.teardown(() => logShim.level = 'warn')
+    logShim.level = 'silent'
     reifyOutput(npm, {
       actualTree: { inventory: { size: 999 }, children: [] },
       auditReport,

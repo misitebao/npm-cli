@@ -3,27 +3,42 @@ const t = require('tap')
 const mocks = {
   profile: {},
   output: () => {},
-  log: {},
   readUserInfo: {},
 }
 const npm = {
   output: (...args) => mocks.output(...args),
 }
 
-const Token = t.mock('../../../lib/commands/token.js', {
-  '../../../lib/utils/otplease.js': (opts, fn) => {
-    return Promise.resolve().then(() => fn(opts))
-  },
-  '../../../lib/utils/read-user-info.js': mocks.readUserInfo,
-  'npm-profile': mocks.profile,
-  npmlog: mocks.log,
-})
+const makeToken = (_npm, otherMocks) => {
+  const Token = t.mock('../../../lib/commands/token.js', {
+    '../../../lib/utils/otplease.js': (opts, fn) => {
+      return Promise.resolve().then(() => fn(opts))
+    },
+    '../../../lib/utils/read-user-info.js': mocks.readUserInfo,
+    'npm-profile': mocks.profile,
+    ...otherMocks,
+  })
+  return new Token(_npm)
+}
 
-const token = new Token(npm)
+const tokenWithMocks = (mockRequests = {}) => {
+  const otherMocks = {
+    npmlog: {},
+    'proc-log': {},
+  }
 
-const tokenWithMocks = mockRequests => {
   for (const mod in mockRequests) {
-    if (mod === 'npm') {
+    if (mod === 'log') {
+      const { info, gauge, newItem } = mockRequests.log
+      if (gauge) {
+        otherMocks.npmlog.gauge = gauge
+      }
+      if (newItem) {
+        otherMocks.npmlog.newItem = newItem
+      }
+      otherMocks['proc-log'] = { info }
+      delete mockRequests.log
+    } else if (mod === 'npm') {
       mockRequests.npm = { ...npm, ...mockRequests.npm }
     } else {
       if (typeof mockRequests[mod] === 'function') {
@@ -50,12 +65,14 @@ const tokenWithMocks = mockRequests => {
     }
   }
 
-  const token = new Token(mockRequests.npm || npm)
+  const token = makeToken(mockRequests.npm || npm, otherMocks)
   return [token, reset]
 }
 
 t.test('completion', t => {
   t.plan(5)
+
+  const [token] = tokenWithMocks()
 
   const testComp = (argv, expect) => {
     t.resolveMatch(token.completion({ conf: { argv: { remain: argv } } }), expect, argv.join(' '))
@@ -74,7 +91,7 @@ t.test('completion', t => {
 t.test('token foobar', async t => {
   t.plan(2)
 
-  const [, reset] = tokenWithMocks({
+  const [token, reset] = tokenWithMocks({
     log: {
       gauge: {
         show: name => {

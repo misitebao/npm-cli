@@ -21,19 +21,17 @@ exitHandlerMock.setNpm = npm => {
 }
 
 const logs = []
-const npmlogMock = {
-  pause: () => logs.push('pause'),
-  verbose: (...msg) => logs.push(['verbose', ...msg]),
-  info: (...msg) => logs.push(['info', ...msg]),
-}
-
 const cliMock = Npm =>
   t.mock('../../lib/cli.js', {
     '../../lib/npm.js': Npm,
     '../../lib/utils/update-notifier.js': async () => null,
     '../../lib/utils/unsupported.js': unsupportedMock,
     '../../lib/utils/exit-handler.js': exitHandlerMock,
-    npmlog: npmlogMock,
+    'proc-log': {
+      pause: () => logs.push('pause'),
+      verbose: (...msg) => logs.push(['verbose', ...msg]),
+      info: (...msg) => logs.push(['info', ...msg]),
+    },
   })
 
 const processMock = proc => {

@@ -1,13 +1,13 @@
 const t = require('tap')
 const path = require('path')
 const { real: mockNpm } = require('../../fixtures/mock-npm.js')
-const { Npm } = mockNpm(t, {
+const { Npm, filteredLogs: logs } = mockNpm(t, {
   '../../package.json': {
     version: '123.456.789-npm',
   },
 })
 const npm = new Npm()
-const { Npm: UnloadedNpm } = mockNpm(t, {
+const { Npm: UnloadedNpm, filteredLogs: unloadedLogs } = mockNpm(t, {
   '../../package.json': {
     version: '123.456.789-npm',
   },
@@ -42,12 +42,6 @@ t.before(async () => {
 })
 
 const { resolve } = require('path')
-
-const npmlog = require('npmlog')
-const verboseLogs = []
-npmlog.verbose = (...message) => {
-  verboseLogs.push(message)
-}
 
 const EXPLAIN_CALLED = []
 const mocks = {
@@ -229,16 +223,16 @@ t.test('eacces/eperm', t => {
       dest,
       stack: 'dummy stack trace',
     })
-    verboseLogs.length = 0
+
     if (loaded) {
       t.matchSnapshot(errorMessage(er, npm))
+      t.matchSnapshot(logs('verb'))
     } else {
       t.matchSnapshot(errorMessage(er, unloadedNpm))
+      t.matchSnapshot(unloadedLogs('verb'))
     }
 
-    t.matchSnapshot(verboseLogs)
     t.end()
-    verboseLogs.length = 0
   }
 
   for (const windows of [true, false]) {

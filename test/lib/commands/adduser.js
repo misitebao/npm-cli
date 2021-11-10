@@ -71,6 +71,8 @@ const AddUser = t.mock('../../../lib/commands/adduser.js', {
   npmlog: {
     clearProgress: () => null,
     disableProgress: () => null,
+  },
+  'proc-log': {
     notice: (_, msg) => {
       registryOutput = msg
     },

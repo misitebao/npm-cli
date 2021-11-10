@@ -1,19 +1,6 @@
-const npmlog = require('npmlog')
-const procLog = require('../../lib/utils/proc-log-listener.js')
-procLog.reset()
-
-// In theory we shouldn't have to do this if all the tests were tearing down
-// their listeners properly, we're still getting warnings even though
-// perfStop() and procLog.reset() is in the teardown script.  This silences the
-// warnings for now
-require('events').defaultMaxListeners = Infinity
-
-const realLog = {}
-for (const level in npmlog.levels) {
-  realLog[level] = npmlog[level]
-}
-
 const { title, execPath } = process
+
+const { LEVELS } = require('proc-log')
 
 // Eventually this should default to having a prefix of an empty testdir, and
 // awaiting npm.load() unless told not to (for npm tests for example).  Ideally
@@ -26,43 +13,47 @@ const RealMockNpm = (t, otherMocks = {}) => {
     return mock.outputs.map(o => o.join(' ')).join('\n')
   }
   mock.filteredLogs = title => mock.logs.filter(([t]) => t === title).map(([, , msg]) => msg)
-  const Npm = t.mock('../../lib/npm.js', otherMocks)
+
+  let instance = null
+  const Npm = t.mock('../../lib/npm.js', {
+    'proc-log': LEVELS.reduce((acc, l) => {
+      acc[l] = (...args) => mock.logs.push([l, ...args])
+      return acc
+    }, {}),
+    ...otherMocks,
+  })
+
   class MockNpm extends Npm {
     constructor () {
       super()
-      for (const level in npmlog.levels) {
-        npmlog[level] = (...msg) => {
-          mock.logs.push([level, ...msg])
-
-          const l = npmlog.level
-          npmlog.level = 'silent'
-          realLog[level](...msg)
-          npmlog.level = l
-        }
-      }
       // npm.js tests need this restored to actually test this function!
       mock.npmOutput = this.output
       this.output = (...msg) => mock.outputs.push(msg)
+      // Track if this test created something with its
+      // constructor so we can all teardown methods
+      // since those are handled in the exit handler
+      instance = this
     }
   }
+
   mock.Npm = MockNpm
+
   t.afterEach(() => {
     mock.outputs.length = 0
     mock.logs.length = 0
   })
 
   t.teardown(() => {
-    process.removeAllListeners('time')
-    process.removeAllListeners('timeEnd')
-    npmlog.record.length = 0
-    for (const level in npmlog.levels) {
-      npmlog[level] = realLog[level]
-    }
-    procLog.reset()
     process.title = title
     process.execPath = execPath
     delete process.env.npm_command
     delete process.env.COLOR
+    if (instance) {
+      instance.logFile.off()
+      instance.timers.off()
+      instance.procLog.off()
+      instance = null
+    }
   })
 
   return mock
@@ -96,21 +87,6 @@ class MockNpm {
       set: (k, v) => config[k] = v,
       list: [{ ...realConfig.defaults, ...config }],
     }
-    if (!this.log) {
-      this.log = {
-        clearProgress: () => {},
-        disableProgress: () => {},
-        enableProgress: () => {},
-        http: () => {},
-        info: () => {},
-        levels: [],
-        notice: () => {},
-        pause: () => {},
-        silly: () => {},
-        verbose: () => {},
-        warn: () => {},
-      }
-    }
   }
 
   output (...msg) {
@@ -121,8 +97,32 @@ class MockNpm {
   }
 }
 
-const FakeMockNpm = (base = {}) => {
-  return new MockNpm(base)
+const FakeMockNpm = ({ log, ...base } = {}, t) => {
+  const npm = new MockNpm(base)
+
+  // XXX: A stopgap until real mock is used in more places
+  // we dont store the log on npm anymore so this takes the way
+  // that fake mock npm previously mocked logs and sets them
+  // up as real mocks and returns the results on the instance
+  if (log && t) {
+    const mocks = {}
+    for (const [key, value] of Object.entries(log)) {
+      if (LEVELS.includes(key)) {
+        if (!mocks['proc-log']) {
+          mocks['proc-log'] = {}
+        }
+        mocks['proc-log'][key] = value
+      } else {
+        if (!mocks.npmlog) {
+          mocks.npmlog = {}
+        }
+        mocks.npmlog[key] = value
+      }
+    }
+    npm.mocks = mocks
+  }
+
+  return npm
 }
 
 module.exports = {

@@ -13,7 +13,7 @@ t.test('should install using Arborist', (t) => {
     '@npmcli/run-script': ({ event }) => {
       SCRIPTS.push(event)
     },
-    npmlog: {
+    'proc-log': {
       warn: () => {},
     },
     '@npmcli/arborist': function (args) {

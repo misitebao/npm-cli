@@ -38,15 +38,10 @@ const pacote = {
 
 const npm = {
   flatOptions,
-  log: { useColor: () => true },
   version: CURRENT_VERSION,
   config: { get: k => k !== 'global' },
   command: 'view',
   argv: ['npm'],
-}
-const npmNoColor = {
-  ...npm,
-  log: { useColor: () => false },
 }
 
 const { basename } = require('path')
@@ -80,12 +75,6 @@ const fs = {
   },
 }
 
-const updateNotifier = t.mock('../../../lib/utils/update-notifier.js', {
-  '@npmcli/ci-detect': () => ciMock,
-  pacote,
-  fs,
-})
-
 t.afterEach(() => {
   MANIFEST_REQUEST.length = 0
   STAT_ERROR = null
@@ -94,8 +83,13 @@ t.afterEach(() => {
   WRITE_ERROR = null
 })
 
-const runUpdateNotifier = async npm => {
-  await updateNotifier(npm)
+const runUpdateNotifier = async ({ color = true, ...npmOptions }) => {
+  await t.mock('../../../lib/utils/update-notifier.js', {
+    '@npmcli/ci-detect': () => ciMock,
+    pacote,
+    fs,
+    npmlog: { useColor: () => color },
+  })(npmOptions)
   return npm.updateNotification
 }
 
@@ -198,7 +192,7 @@ t.test('notification situations', t => {
     const version = HAVE_BETA
     t.matchSnapshot(await runUpdateNotifier({ ...npm, version }), 'color')
     t.matchSnapshot(
-      await runUpdateNotifier({ ...npmNoColor, version }),
+      await runUpdateNotifier({ ...npm, version, color: false }),
       'no color'
     )
     t.strictSame(MANIFEST_REQUEST, [`npm@^${version}`, `npm@^${version}`])
@@ -208,7 +202,7 @@ t.test('notification situations', t => {
     const version = NEXT_PATCH
     t.matchSnapshot(await runUpdateNotifier({ ...npm, version }), 'color')
     t.matchSnapshot(
-      await runUpdateNotifier({ ...npmNoColor, version }),
+      await runUpdateNotifier({ ...npm, version, color: false }),
       'no color'
     )
     t.strictSame(MANIFEST_REQUEST, [
@@ -223,7 +217,7 @@ t.test('notification situations', t => {
     const version = NEXT_MINOR
     t.matchSnapshot(await runUpdateNotifier({ ...npm, version }), 'color')
     t.matchSnapshot(
-      await runUpdateNotifier({ ...npmNoColor, version }),
+      await runUpdateNotifier({ ...npm, version, color: false }),
       'no color'
     )
     t.strictSame(MANIFEST_REQUEST, [
@@ -238,7 +232,7 @@ t.test('notification situations', t => {
     const version = CURRENT_PATCH
     t.matchSnapshot(await runUpdateNotifier({ ...npm, version }), 'color')
     t.matchSnapshot(
-      await runUpdateNotifier({ ...npmNoColor, version }),
+      await runUpdateNotifier({ ...npm, version, color: false }),
       'no color'
     )
     t.strictSame(MANIFEST_REQUEST, ['npm@latest', 'npm@latest'])
@@ -248,7 +242,7 @@ t.test('notification situations', t => {
     const version = CURRENT_MINOR
     t.matchSnapshot(await runUpdateNotifier({ ...npm, version }), 'color')
     t.matchSnapshot(
-      await runUpdateNotifier({ ...npmNoColor, version }),
+      await runUpdateNotifier({ ...npm, version, color: false }),
       'no color'
     )
     t.strictSame(MANIFEST_REQUEST, ['npm@latest', 'npm@latest'])
@@ -258,7 +252,7 @@ t.test('notification situations', t => {
     const version = CURRENT_MAJOR
     t.matchSnapshot(await runUpdateNotifier({ ...npm, version }), 'color')
     t.matchSnapshot(
-      await runUpdateNotifier({ ...npmNoColor, version }),
+      await runUpdateNotifier({ ...npm, version, color: false }),
       'no color'
     )
     t.strictSame(MANIFEST_REQUEST, ['npm@latest', 'npm@latest'])

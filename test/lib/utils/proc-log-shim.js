@@ -7,7 +7,7 @@ const npmlog = {
   verbose: (...args) => logs.push(['verbose', ...args]),
 }
 
-t.mock('../../../lib/utils/proc-log-listener.js', {
+t.mock('../../../lib/utils/npm-proc-log-shim.js', {
   npmlog,
 })()
 

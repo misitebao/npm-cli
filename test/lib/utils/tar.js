@@ -46,9 +46,9 @@ t.test('should log tarball contents', async (t) => {
 
 t.test('should log tarball contents with unicode', async (t) => {
   const { logTar } = t.mock('../../../lib/utils/tar.js', {
-    npmlog: {
+    'proc-log': {
       notice: (str) => {
-        t.ok(true, 'defaults to npmlog')
+        t.ok(true, 'defaults to proc-log')
         return str
       },
     },
@@ -61,26 +61,6 @@ t.test('should log tarball contents with unicode', async (t) => {
     unpackedSize: 0,
     integrity: '',
   }, { unicode: true })
-  t.end()
-})
-
-t.test('should default to npmlog', async (t) => {
-  const { logTar } = t.mock('../../../lib/utils/tar.js', {
-    npmlog: {
-      notice: (str) => {
-        t.ok(true, 'defaults to npmlog')
-        return str
-      },
-    },
-  })
-
-  logTar({
-    files: [],
-    bundled: [],
-    size: 0,
-    unpackedSize: 0,
-    integrity: '',
-  })
   t.end()
 })
 

@@ -7,14 +7,15 @@ const config = {
   global: false,
 }
 const noop = () => null
+const log = { warn: noop }
 const npm = mockNpm({
   globalDir: '',
-  log: noop,
   config,
   prefix: '',
 })
 const mocks = {
-  npmlog: { warn () {} },
+  npmlog: {},
+  'proc-log': log,
   '@npmcli/arborist': class {
     reify () {}
   },
@@ -40,7 +41,7 @@ t.test('no args', async t => {
         {
           ...npm.flatOptions,
           path: npm.prefix,
-          log: noop,
+          log,
           workspaces: null,
         },
         'should call arborist contructor with expected args'
@@ -76,7 +77,7 @@ t.test('with args', async t => {
         {
           ...npm.flatOptions,
           path: npm.prefix,
-          log: noop,
+          log,
           workspaces: null,
         },
         'should call arborist contructor with expected args'
@@ -108,7 +109,7 @@ t.test('update --depth=<number>', async t => {
 
   const Update = t.mock('../../../lib/commands/update.js', {
     ...mocks,
-    npmlog: {
+    'proc-log': {
       warn: (title, msg) => {
         t.equal(title, 'update', 'should print expected title')
         t.match(
@@ -140,7 +141,7 @@ t.test('update --global', async t => {
       const { path, ...opts } = args
       t.same(
         opts,
-        { ...npm.flatOptions, log: noop, workspaces: undefined },
+        { ...npm.flatOptions, log, workspaces: undefined },
         'should call arborist contructor with expected options'
       )
 

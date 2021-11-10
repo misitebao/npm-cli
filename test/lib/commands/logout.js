@@ -11,7 +11,7 @@ const flatOptions = {
 }
 const npm = mockNpm({ config, flatOptions })
 
-const npmlog = {}
+const procLog = {}
 
 let result = null
 const npmFetch = (url, opts) => {
@@ -19,7 +19,7 @@ const npmFetch = (url, opts) => {
 }
 
 const mocks = {
-  npmlog,
+  'proc-log': procLog,
   'npm-registry-fetch': npmFetch,
 }
 
@@ -34,13 +34,13 @@ t.test('token logout', async t => {
     config.clearCredentialsByURI = null
     config.delete = null
     config.save = null
-    npmlog.verbose = null
+    procLog.verbose = null
   })
   t.plan(5)
 
   flatOptions['//registry.npmjs.org/:_authToken'] = '@foo/'
 
-  npmlog.verbose = (title, msg) => {
+  procLog.verbose = (title, msg) => {
     t.equal(title, 'logout', 'should have correcct log prefix')
     t.equal(
       msg,
@@ -91,7 +91,7 @@ t.test('token scoped logout', async t => {
     config.clearCredentialsByURI = null
     config.delete = null
     config.save = null
-    npmlog.verbose = null
+    procLog.verbose = null
   })
   t.plan(7)
 
@@ -102,7 +102,7 @@ t.test('token scoped logout', async t => {
   flatOptions.scope = '@myscope'
   flatOptions['@myscope:registry'] = 'https://diff-registry.npmjs.com/'
 
-  npmlog.verbose = (title, msg) => {
+  procLog.verbose = (title, msg) => {
     t.equal(title, 'logout', 'should have correcct log prefix')
     t.equal(
       msg,
@@ -154,14 +154,14 @@ t.test('user/pass logout', async t => {
     delete flatOptions['//registry.npmjs.org/:_password']
     npm.config.clearCredentialsByURI = null
     npm.config.save = null
-    npmlog.verbose = null
+    procLog.verbose = null
   })
   t.plan(2)
 
   flatOptions['//registry.npmjs.org/:username'] = 'foo'
   flatOptions['//registry.npmjs.org/:_password'] = 'bar'
 
-  npmlog.verbose = (title, msg) => {
+  procLog.verbose = (title, msg) => {
     t.equal(title, 'logout', 'should have correct log prefix')
     t.equal(
       msg,
@@ -195,7 +195,7 @@ t.test('ignore invalid scoped registry config', async t => {
     config.clearCredentialsByURI = null
     config.delete = null
     config.save = null
-    npmlog.verbose = null
+    procLog.verbose = null
   })
   t.plan(4)
 
@@ -203,7 +203,7 @@ t.test('ignore invalid scoped registry config', async t => {
   config.scope = '@myscope'
   flatOptions['@myscope:registry'] = ''
 
-  npmlog.verbose = (title, msg) => {
+  procLog.verbose = (title, msg) => {
     t.equal(title, 'logout', 'should have correcct log prefix')
     t.equal(
       msg,
