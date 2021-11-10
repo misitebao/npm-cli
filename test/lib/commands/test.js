@@ -1,6 +1,6 @@
 const t = require('tap')
 const spawk = require('spawk')
-const { logShim } = require('../../../lib/utils/proc-log-shim')
+const logShim = require('../../../lib/utils/log-shim')
 const { real: mockNpm } = require('../../fixtures/mock-npm')
 
 spawk.preventUnmatched()

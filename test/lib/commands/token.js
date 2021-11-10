@@ -9,16 +9,18 @@ const npm = {
   output: (...args) => mocks.output(...args),
 }
 
-const Token = t.mock('../../../lib/commands/token.js', {
+const mockToken = (otherMocks) => t.mock('../../../lib/commands/token.js', {
   '../../../lib/utils/otplease.js': (opts, fn) => {
     return Promise.resolve().then(() => fn(opts))
   },
   '../../../lib/utils/read-user-info.js': mocks.readUserInfo,
   'npm-profile': mocks.profile,
-  npmlog: mocks.log,
+  ...otherMocks,
 })
 
-const tokenWithMocks = mockRequests => {
+const tokenWithMocks = (options = {}) => {
+  const { log, ...mockRequests } = options
+
   for (const mod in mockRequests) {
     if (mod === 'npm') {
       mockRequests.npm = { ...npm, ...mockRequests.npm }
@@ -47,7 +49,16 @@ const tokenWithMocks = mockRequests => {
     }
   }
 
-  const token = new Token(mockRequests.npm || npm)
+  const MockedToken = mockToken(log ? {
+    'proc-log': {
+      info: log.info,
+    },
+    npmlog: {
+      gauge: log.gauge,
+      newItem: log.newItem,
+    },
+  } : {})
+  const token = new MockedToken(mockRequests.npm || npm)
   return [token, reset]
 }
 

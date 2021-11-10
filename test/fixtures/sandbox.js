@@ -4,11 +4,12 @@ const { homedir, tmpdir } = require('os')
 const { dirname, join } = require('path')
 const { promisify } = require('util')
 const mkdirp = require('mkdirp-infer-owner')
-const npmlog = require('npmlog')
 const rimraf = promisify(require('rimraf'))
 
 const chain = new Map()
 const sandboxes = new Map()
+
+process.on('warning', console.log)
 
 // Disable lint errors for assigning to process global
 /* global process:writable */
@@ -33,19 +34,6 @@ createHook({
       : _process
   },
 }).enable()
-
-for (const level in npmlog.levels) {
-  npmlog[`_${level}`] = npmlog[level]
-  npmlog[level] = (...args) => {
-    process._logs = process._logs || {}
-    process._logs[level] = process._logs[level] || []
-    process._logs[level].push(args)
-    const _level = npmlog.level
-    npmlog.level = 'silent'
-    npmlog[`_${level}`](...args)
-    npmlog.level = _level
-  }
-}
 
 const _data = Symbol('sandbox.data')
 const _dirs = Symbol('sandbox.dirs')

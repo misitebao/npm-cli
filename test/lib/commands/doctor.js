@@ -85,47 +85,6 @@ const cacache = {
   },
 }
 
-const npmlog = {
-  newItem: name => {
-    logs[name] = {}
-    return {
-      info: (_, msg) => {
-        if (!logs[name].info) {
-          logs[name].info = []
-        }
-        logs[name].info.push(msg)
-      },
-      warn: (_, msg) => {
-        if (!logs[name].warn) {
-          logs[name].warn = []
-        }
-        logs[name].warn.push(msg)
-      },
-      error: (_, msg) => {
-        if (!logs[name].error) {
-          logs[name].error = []
-        }
-        logs[name].error.push(msg)
-      },
-      silly: (_, msg) => {
-        if (!logs[name].silly) {
-          logs[name].silly = []
-        }
-        logs[name].silly.push(msg)
-      },
-      completeWork: () => {},
-      finish: () => {
-        logs[name].finished = true
-      },
-    }
-  },
-  level: 'error',
-  levels: {
-    info: 1,
-    error: 0,
-  },
-}
-
 const mocks = {
   '../../../lib/utils/is-windows.js': false,
   '../../../lib/utils/ping.js': ping,

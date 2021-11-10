@@ -1,5 +1,6 @@
 const { title, execPath } = process
 
+const npmlog = require('npmlog')
 const { LEVELS } = require('proc-log')
 
 // Eventually this should default to having a prefix of an empty testdir, and
@@ -20,6 +21,10 @@ const RealMockNpm = (t, otherMocks = {}) => {
       acc[l] = (...args) => mock.logs.push([l, ...args])
       return acc
     }, {}),
+    npmlog: {
+      ...npmlog,
+      timing: (...args) => mock.logs.push(['timing', ...args]),
+    },
     ...otherMocks,
   })
 

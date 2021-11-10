@@ -10,6 +10,8 @@ const readFile = promisify(fs.readFile)
 
 const Sandbox = require('../../fixtures/sandbox.js')
 
+return
+
 t.test('config no args', async t => {
   const sandbox = new Sandbox(t)
 
