@@ -14,6 +14,7 @@ t.teardown(() => {
 const makeSpawnArgs = require('@npmcli/run-script/lib/make-spawn-args.js')
 
 t.test('should run stop script from package.json', async t => {
+  t.plan(2)
   const prefix = t.testdir({
     'package.json': JSON.stringify({
       name: 'x',

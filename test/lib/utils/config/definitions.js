@@ -372,26 +372,40 @@ t.test('cache-min', t => {
 })
 
 t.test('color', t => {
-  const { isTTY } = process.stderr
-  t.teardown(() => process.stderr.isTTY = isTTY)
+  const { isTTY: stdoutIsTTY } = process.stdout
+  const { isTTY: stderrIsTTY } = process.stderr
+  t.teardown(() => {
+    process.stdout.isTTY = stdoutIsTTY
+    process.stderr.isTTY = stderrIsTTY
+  })
 
   const flat = {}
   const obj = { color: 'always' }
 
   definitions.color.flatten('color', obj, flat)
-  t.strictSame(flat, { color: true }, 'true when --color=always')
+  t.strictSame(flat, { color: true, logColor: true }, 'true when --color=always')
 
   obj.color = false
   definitions.color.flatten('color', obj, flat)
-  t.strictSame(flat, { color: false }, 'true when --no-color')
+  t.strictSame(flat, { color: false, logColor: false }, 'true when --no-color')
+
+  process.stdout.isTTY = false
+  obj.color = true
+  definitions.color.flatten('color', obj, flat)
+  t.strictSame(flat, { color: false, logColor: false }, 'no color when stdout not tty')
+  process.stdout.isTTY = true
+  definitions.color.flatten('color', obj, flat)
+  t.strictSame(flat, { color: true, logColor: false }, '--color turns on color when stdout is tty')
+  process.stdout.isTTY = false
 
   process.stderr.isTTY = false
   obj.color = true
   definitions.color.flatten('color', obj, flat)
-  t.strictSame(flat, { color: false }, 'no color when stdout not tty')
+  t.strictSame(flat, { color: false, logColor: false }, 'no color when stderr not tty')
   process.stderr.isTTY = true
   definitions.color.flatten('color', obj, flat)
-  t.strictSame(flat, { color: true }, '--color turns on color when stdout is tty')
+  t.strictSame(flat, { color: false, logColor: true }, '--color turns on color when stderr is tty')
+  process.stderr.isTTY = false
 
   delete process.env.NO_COLOR
   const defsAllowColor = t.mock(defpath)

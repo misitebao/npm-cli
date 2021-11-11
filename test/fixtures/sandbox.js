@@ -10,8 +10,6 @@ const mockLogs = require('./mock-logs')
 const chain = new Map()
 const sandboxes = new Map()
 
-process.on('warning', console.log)
-
 // Disable lint errors for assigning to process global
 /* global process:writable */
 
@@ -181,8 +179,6 @@ class Sandbox extends EventEmitter {
 
   // test.afterEach hook
   reset () {
-    throw new Error('why')
-    console.log('reset')
     this.removeAllListeners()
     this[_parent] = undefined
     this[_output] = []
@@ -194,7 +190,6 @@ class Sandbox extends EventEmitter {
 
   // test.teardown hook
   teardown () {
-    console.log('teardown')
     if (this[_parent]) {
       sandboxes.delete(this[_parent])
     }

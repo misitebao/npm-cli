@@ -147,7 +147,7 @@ t.test('if loglevel=info and json, should not output package contents', async t 
         id: 'someid',
       }),
       logTar: () => {
-        t.pass('logTar is called')
+        t.fail('logTar is not called in json mode')
       },
     },
     libnpmpublish: {
@@ -623,7 +623,7 @@ t.test('workspaces', t => {
   t.end()
 })
 
-t.test('private workspaces', async t => {
+t.only('private workspaces', async t => {
   const testDir = t.testdir({
     'package.json': JSON.stringify({
       name: 'workspaces-project',
@@ -681,9 +681,12 @@ t.test('private workspaces', async t => {
   }
 
   t.test('with color', async t => {
+    t.plan(4)
+
+    npmlog.level = 'info'
     const Publish = t.mock('../../../lib/commands/publish.js', {
       ...mocks,
-      npmlog: {
+      'proc-log': {
         notice () {},
         verbose () {},
         warn (title, msg) {
@@ -707,9 +710,12 @@ t.test('private workspaces', async t => {
   })
 
   t.test('colorless', async t => {
+    t.plan(4)
+
+    npmlog.level = 'info'
     const Publish = t.mock('../../../lib/commands/publish.js', {
       ...mocks,
-      npmlog: {
+      'proc-log': {
         notice () {},
         verbose () {},
         warn (title, msg) {
@@ -730,6 +736,8 @@ t.test('private workspaces', async t => {
   })
 
   t.test('unexpected error', async t => {
+    t.plan(1)
+
     const Publish = t.mock('../../../lib/commands/publish.js', {
       ...mocks,
       libnpmpublish: {
@@ -741,7 +749,7 @@ t.test('private workspaces', async t => {
           publishes.push(manifest)
         },
       },
-      npmlog: {
+      'proc-log': {
         notice () {},
         verbose () {},
       },
@@ -755,6 +763,8 @@ t.test('private workspaces', async t => {
 })
 
 t.test('runs correct lifecycle scripts', async t => {
+  t.plan(5)
+
   const testDir = t.testdir({
     'package.json': JSON.stringify(
       {
@@ -773,6 +783,7 @@ t.test('runs correct lifecycle scripts', async t => {
   })
 
   const scripts = []
+  npmlog.level = 'info'
   const Publish = t.mock('../../../lib/commands/publish.js', {
     '@npmcli/run-script': args => {
       scripts.push(args)
@@ -810,6 +821,8 @@ t.test('runs correct lifecycle scripts', async t => {
 })
 
 t.test('does not run scripts on --ignore-scripts', async t => {
+  t.plan(4)
+
   const testDir = t.testdir({
     'package.json': JSON.stringify(
       {
@@ -821,6 +834,7 @@ t.test('does not run scripts on --ignore-scripts', async t => {
     ),
   })
 
+  npmlog.level = 'info'
   const Publish = t.mock('../../../lib/commands/publish.js', {
     '@npmcli/run-script': () => {
       t.fail('should not call run-script')

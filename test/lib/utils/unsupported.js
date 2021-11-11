@@ -83,13 +83,12 @@ t.test('checkForBrokenNode', t => {
 })
 
 t.test('checkForUnsupportedNode', t => {
-  const log = require('proc-log')
-  const { warn } = log
+  const { error } = console
   const versionPropDesc = Object.getOwnPropertyDescriptor(process, 'version')
 
   t.teardown(() => {
     Object.defineProperty(process, 'version', versionPropDesc)
-    log.warn = warn
+    console.error = error
   })
 
   const logs = []
@@ -99,7 +98,7 @@ t.test('checkForUnsupportedNode', t => {
     "can't make any promises that npm will work with this version.",
     'You can find the latest version at https://nodejs.org/',
   ]
-  log.warn = (section, msg) => logs.push(msg)
+  console.error = (msg) => logs.push(msg)
 
   // run it once to not fail or warn
   unsupported.checkForUnsupportedNode()

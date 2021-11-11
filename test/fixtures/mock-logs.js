@@ -10,9 +10,12 @@ module.exports = (fn, mocks = {}) => ({
     }, {}),
     ...mocks['proc-log'],
   },
-  npmlog: {
-    ...npmlog,
+  // Assign mocked properties directly to npmlog
+  // and then mock with that object. This is necessary
+  // so tests can still directly set `log.level = 'silent'
+  // but again, this should go away with npmlog
+  npmlog: Object.assign(npmlog, {
     timing: (...args) => fn('timing', ...args),
     ...mocks.npmlog,
-  },
+  }),
 })

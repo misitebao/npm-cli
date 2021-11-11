@@ -1,6 +1,6 @@
 const t = require('tap')
 
-const makeShim = (mocks) => t.mock('../../../lib/utils/npmlog-shim.js', mocks)
+const makeShim = (mocks) => t.mock('../../../lib/utils/log-shim.js', mocks)
 
 t.test('has properties', (t) => {
   const shim = makeShim()
@@ -38,13 +38,19 @@ t.test('has properties', (t) => {
     'heading',
     'gauge',
     'stream',
+    'tracker',
     // npmlog setup methods
+    'useColor',
     'enableColor',
     'disableColor',
     'enableUnicode',
     'disableUnicode',
     'enableProgress',
     'disableProgress',
+    'clearProgress',
+    'showProgress',
+    'newItem',
+    'newGroup',
     // Log methods
     'notice',
     'error',

@@ -40,8 +40,6 @@ t.test('config ignores workspaces', async t => {
   )
 })
 
-return
-
 t.test('config list', async t => {
   const sandbox = new Sandbox(t)
 
