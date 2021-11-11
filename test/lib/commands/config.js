@@ -10,8 +10,6 @@ const readFile = promisify(fs.readFile)
 
 const Sandbox = require('../../fixtures/sandbox.js')
 
-return
-
 t.test('config no args', async t => {
   const sandbox = new Sandbox(t)
 
@@ -41,6 +39,8 @@ t.test('config ignores workspaces', async t => {
     'logged the warning'
   )
 })
+
+return
 
 t.test('config list', async t => {
   const sandbox = new Sandbox(t)

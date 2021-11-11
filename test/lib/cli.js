@@ -28,7 +28,6 @@ const cliMock = Npm =>
     '../../lib/utils/unsupported.js': unsupportedMock,
     '../../lib/utils/exit-handler.js': exitHandlerMock,
     'proc-log': {
-      pause: () => logs.push('pause'),
       verbose: (...msg) => logs.push(['verbose', ...msg]),
       info: (...msg) => logs.push(['info', ...msg]),
     },
@@ -67,7 +66,6 @@ t.test('print the version, and treat npm_g as npm -g', async t => {
   t.strictSame(proc.argv, ['node', 'npm', '-g', '-v'], 'npm process.argv was rewritten')
   t.strictSame(process.argv, ['node', 'npm', '-g', '-v'], 'system process.argv was rewritten')
   t.strictSame(logs, [
-    'pause',
     ['verbose', 'cli', proc.argv],
     ['info', 'using', 'npm@%s', Npm.version],
     ['info', 'using', 'node@%s', process.version],
@@ -92,7 +90,6 @@ t.test('calling with --versions calls npm version with no args', async t => {
   await cli(proc)
   t.equal(proc.title, 'npm')
   t.strictSame(logs, [
-    'pause',
     ['verbose', 'cli', proc.argv],
     ['info', 'using', 'npm@%s', Npm.version],
     ['info', 'using', 'node@%s', process.version],
@@ -122,7 +119,6 @@ t.test('logged argv is sanitized', async t => {
   await cli(proc)
   t.equal(proc.title, 'npm')
   t.strictSame(logs, [
-    'pause',
     [
       'verbose',
       'cli',

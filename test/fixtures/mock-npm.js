@@ -1,7 +1,5 @@
 const { title, execPath } = process
-
-const npmlog = require('npmlog')
-const { LEVELS } = require('proc-log')
+const mockLogs = require('./mock-logs')
 
 // Eventually this should default to having a prefix of an empty testdir, and
 // awaiting npm.load() unless told not to (for npm tests for example).  Ideally
@@ -16,15 +14,9 @@ const RealMockNpm = (t, otherMocks = {}) => {
   mock.filteredLogs = title => mock.logs.filter(([t]) => t === title).map(([, , msg]) => msg)
 
   let instance = null
+  const logMocks = mockLogs((...args) => mock.logs.push(args))
   const Npm = t.mock('../../lib/npm.js', {
-    'proc-log': LEVELS.reduce((acc, l) => {
-      acc[l] = (...args) => mock.logs.push([l, ...args])
-      return acc
-    }, {}),
-    npmlog: {
-      ...npmlog,
-      timing: (...args) => mock.logs.push(['timing', ...args]),
-    },
+    ...logMocks,
     ...otherMocks,
   })
 
@@ -56,7 +48,7 @@ const RealMockNpm = (t, otherMocks = {}) => {
     if (instance) {
       instance.logFile.off()
       instance.timers.off()
-      instance.procLog.off()
+      instance.display.off()
       instance = null
     }
   })

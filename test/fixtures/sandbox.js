@@ -5,6 +5,7 @@ const { dirname, join } = require('path')
 const { promisify } = require('util')
 const mkdirp = require('mkdirp-infer-owner')
 const rimraf = promisify(require('rimraf'))
+const mockLogs = require('./mock-logs')
 
 const chain = new Map()
 const sandboxes = new Map()
@@ -45,6 +46,7 @@ const _output = Symbol('sandbox.output')
 const _proxy = Symbol('sandbox.proxy')
 const _get = Symbol('sandbox.proxy.get')
 const _set = Symbol('sandbox.proxy.set')
+const _log = Symbol('sandbox._log')
 
 // these config keys can be redacted widely
 const redactedDefaults = [
@@ -90,8 +92,8 @@ class Sandbox extends EventEmitter {
     this[_proxy].argv = []
 
     test.cleanSnapshot = this.cleanSnapshot.bind(this)
-    test.afterEach(() => this.reset())
-    test.teardown(() => this.teardown())
+    this[_test].afterEach(() => this.reset())
+    this[_test].teardown(() => this.teardown())
   }
 
   get config () {
@@ -179,6 +181,8 @@ class Sandbox extends EventEmitter {
 
   // test.afterEach hook
   reset () {
+    throw new Error('why')
+    console.log('reset')
     this.removeAllListeners()
     this[_parent] = undefined
     this[_output] = []
@@ -190,9 +194,14 @@ class Sandbox extends EventEmitter {
 
   // test.teardown hook
   teardown () {
+    console.log('teardown')
     if (this[_parent]) {
       sandboxes.delete(this[_parent])
     }
+
+    this[_npm].timers.off()
+    this[_npm].logFile.off()
+    this[_npm].display.off()
 
     return rimraf(this[_dirs].temp).catch(() => null)
   }
@@ -243,6 +252,12 @@ class Sandbox extends EventEmitter {
     return this[_data].set(prop, value)
   }
 
+  [_log] = (level, ...args) => {
+    this[_proxy]._logs = this[_proxy]._logs || {}
+    this[_proxy]._logs[level] = this[_proxy]._logs[level] || []
+    this[_proxy]._logs[level].push(args)
+  }
+
   async run (command, argv = []) {
     await Promise.all([
       mkdirp(this.project),
@@ -267,7 +282,11 @@ class Sandbox extends EventEmitter {
       ...argv,
     ]
 
-    const Npm = this[_test].mock('../../lib/npm.js', this[_mocks])
+    const logMocks = mockLogs(this[_log])
+    const Npm = this[_test].mock('../../lib/npm.js', {
+      ...this[_mocks],
+      ...logMocks,
+    })
     this[_npm] = new Npm()
     this[_npm].output = (...args) => this[_output].push(args)
     await this[_npm].load()
@@ -313,7 +332,11 @@ class Sandbox extends EventEmitter {
       ...argv,
     ]
 
-    const Npm = this[_test].mock('../../lib/npm.js', this[_mocks])
+    const logMocks = mockLogs(this[_log])
+    const Npm = this[_test].mock('../../lib/npm.js', {
+      ...this[_mocks],
+      ...logMocks,
+    })
     this[_npm] = new Npm()
     this[_npm].output = (...args) => this[_output].push(args)
     await this[_npm].load()

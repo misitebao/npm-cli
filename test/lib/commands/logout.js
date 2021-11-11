@@ -10,19 +10,13 @@ const flatOptions = {
   scope: '',
 }
 const npm = mockNpm({ config, flatOptions })
-
 let result = null
-const npmFetch = (url, opts) => {
-  result = { url, opts }
-}
-
-const mocks = {
-  'npm-registry-fetch': npmFetch,
-}
 
 const mockLogout = (otherMocks) => {
   const Logout = t.mock('../../../lib/commands/logout.js', {
-    ...mocks,
+    'npm-registry-fetch': (url, opts) => {
+      result = { url, opts }
+    },
     ...otherMocks,
   })
   return new Logout(npm)
@@ -31,7 +25,6 @@ const mockLogout = (otherMocks) => {
 t.afterEach(() => {
   delete flatOptions.token
   result = null
-  mocks['npm-registry-fetch'] = null
   config.clearCredentialsByURI = null
   config.delete = null
   config.save = null
@@ -93,7 +86,6 @@ t.test('token scoped logout', async t => {
     delete config['@myscope:registry']
     delete flatOptions.scope
     result = null
-    mocks['npm-registry-fetch'] = null
     config.clearCredentialsByURI = null
     config.delete = null
     config.save = null
@@ -206,7 +198,6 @@ t.test('ignore invalid scoped registry config', async t => {
   t.teardown(() => {
     delete flatOptions.token
     result = null
-    mocks['npm-registry-fetch'] = null
     config.clearCredentialsByURI = null
     config.delete = null
     config.save = null

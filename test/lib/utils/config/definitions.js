@@ -372,8 +372,8 @@ t.test('cache-min', t => {
 })
 
 t.test('color', t => {
-  const { isTTY } = process.stdout
-  t.teardown(() => process.stdout.isTTY = isTTY)
+  const { isTTY } = process.stderr
+  t.teardown(() => process.stderr.isTTY = isTTY)
 
   const flat = {}
   const obj = { color: 'always' }
@@ -385,11 +385,11 @@ t.test('color', t => {
   definitions.color.flatten('color', obj, flat)
   t.strictSame(flat, { color: false }, 'true when --no-color')
 
-  process.stdout.isTTY = false
+  process.stderr.isTTY = false
   obj.color = true
   definitions.color.flatten('color', obj, flat)
   t.strictSame(flat, { color: false }, 'no color when stdout not tty')
-  process.stdout.isTTY = true
+  process.stderr.isTTY = true
   definitions.color.flatten('color', obj, flat)
   t.strictSame(flat, { color: true }, '--color turns on color when stdout is tty')
 

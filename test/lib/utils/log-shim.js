@@ -8,7 +8,6 @@ t.test('has properties', (t) => {
   t.match(shim, {
     level: String,
     levels: {},
-    progressEnabled: Boolean,
 
     gauge: {},
     stream: {},
@@ -37,7 +36,6 @@ t.test('has properties', (t) => {
     'level',
     'levels',
     'heading',
-    'progressEnabled',
     'gauge',
     'stream',
     // npmlog setup methods
@@ -63,7 +61,7 @@ t.test('has properties', (t) => {
 })
 
 t.test('works with npmlog/proclog proxy', t => {
-  const procLog = { silly: () => 'SILLY', LEVELS: ['silly'] }
+  const procLog = { silly: () => 'SILLY' }
   const npmlog = { level: 'woo', enableColor: () => true }
   const shim = makeShim({ npmlog, 'proc-log': procLog })
 
