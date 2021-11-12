@@ -4,18 +4,13 @@ const path = require('path')
 const os = require('os')
 
 const LogFile = require('../../../lib/utils/log-file.js')
-const Timers = require('../../../lib/utils/timers.js')
 
-const log = (...args) => process.emit('log', ...args)
-const time = (...args) => process.emit('time', ...args)
-const timeEnd = (...args) => process.emit('timeEnd', ...args)
 const last = arr => arr[arr.length - 1]
 
 const readLogs = async (dir) => {
-  const logDirPath = path.join(dir, '_logs')
-  const logDir = await fs.readdir(logDirPath)
+  const logDir = await fs.readdir(dir)
   return Promise.all(logDir.map(async (f) => {
-    const logs = await fs.readFile(path.join(logDirPath, f), 'utf-8')
+    const logs = await fs.readFile(path.join(dir, f), 'utf-8')
     const rawLogs = logs.split(os.EOL)
     return {
       filename: f,
@@ -30,43 +25,40 @@ t.test('stuff', async t => {
 
   const logFile = new LogFile({
     maxLogsPerFile: 10,
-    timers: new Timers(),
+    maxFilesPerProcess: 20,
   })
 
-  log('error', 'buffered')
+  logFile.log('error', 'buffered')
 
   logFile.config({
     dir: root,
-    maxFiles: 10,
+    maxFiles: 100,
   })
 
   for (const i of [...new Array(50)].map((_, i) => i)) {
-    log('error', `log ${i}`)
-    time(`log ${i}`)
+    logFile.log('error', `log ${i}`)
   }
 
   // Ignored
-  log('pause')
-  log('resume')
-  log('pause')
+  logFile.log('pause')
+  logFile.log('resume')
+  logFile.log('pause')
 
   for (const i of [...new Array(50)].map((_, i) => i)) {
-    timeEnd(`log ${i}`)
+    logFile.log('verb', `log ${i}`)
   }
 
   logFile.off()
-
-  log('error', 'ignored')
+  logFile.log('error', 'ignored')
 
   const logs = await readLogs(root)
-
   t.equal(logs.length, 11)
   t.ok(logs.slice(0, 10).every(f => f.logs.length === 10))
   t.ok(last(logs).logs.length, 1)
   t.ok(logs.every(f => last(f.rawLogs) === ''))
   t.strictSame(
-    logFile.writtenFiles,
-    logs.map((l) => path.resolve(root, '_logs', l.filename))
+    logFile.files,
+    logs.map((l) => path.resolve(root, l.filename))
   )
 })
 
