@@ -1,5 +1,3 @@
-/* eslint-disable no-extend-native */
-/* eslint-disable no-global-assign */
 const t = require('tap')
 const EventEmitter = require('events')
 const os = require('os')
@@ -13,7 +11,6 @@ const _toISOString = Date.prototype.toISOString
 Date.prototype.toISOString = () => 'expecteddate'
 
 const { real: mockNpm } = require('../../fixtures/mock-npm')
-const LogFile = require('../../../lib/utils/log-file.js')
 
 // generic error to be used in tests
 const err = Object.assign(new Error('ERROR'), { code: 'ERROR' })
@@ -36,15 +33,6 @@ const timingFile = path.resolve(cacheFolder, '_timing.json')
 const { Npm } = mockNpm(t, {
   '../../package.json': {
     version: '1.0.0',
-  },
-  // This is only mocked so we can explicitly set the log file
-  // directory, because it reads from the cache from the config
-  // in npm.load which is not available in tests until after load
-  // XXX: this should go away once tests can pass in config directly
-  '../../lib/utils/log-file.js': class XXX extends LogFile {
-    on (options) {
-      super.on({ ...options, dir: cacheFolder })
-    }
   },
 })
 const npm = new Npm()
@@ -104,8 +92,6 @@ t.teardown(() => {
 t.afterEach(() => {
   errors.length = 0
   npmlog.level = 'silent'
-  // clear out the 'A complete log' message
-  npmlog.record.length = 0
   delete process.exitCode
 })
 
@@ -124,7 +110,6 @@ t.test('exit handler never called - loglevel silent', (t) => {
   npmlog.level = 'silent'
   process.emit('exit', 1)
   const logData = fs.readFileSync(logFile, 'utf8')
-  console.log(logData, errors)
   t.match(logData, 'Exit handler never called!')
   t.match(errors, [''], 'logs one empty string to console.error')
   t.end()

@@ -42,6 +42,9 @@ const bePosix = () => {
 }
 const argv = [...process.argv]
 
+const CACHE = t.testdir()
+process.env.npm_config_cache = CACHE
+
 t.afterEach((t) => {
   for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
     delete process.env[env]
@@ -53,9 +56,6 @@ t.afterEach((t) => {
     configurable: true,
   })
 })
-
-const CACHE = t.testdir()
-process.env.npm_config_cache = CACHE
 
 t.test('not yet loaded', async t => {
   const { Npm } = mockNpm(t)
@@ -484,9 +484,13 @@ t.test('timings', async t => {
   })
 
   t.test('writes timers', async t => {
+    const cache = t.testdir()
+    process.env.npm_config_cache = cache
     const { Npm } = mockNpm(t)
     const npm = new Npm()
     await npm.load()
+    process.emit('time', 'foo')
+    process.emit('timeEnd', 'foo')
     npm.config.set('timing', true)
     npm.unload()
     const timings = JSON.parse(await fs.readFile(resolve(npm.cache, '_timing.json'), 'utf-8'))
@@ -495,11 +499,14 @@ t.test('timings', async t => {
       logfile: [],
       version: String,
       unfinished: {},
+      foo: Number,
       'npm:load': Number,
     })
   })
 
   t.test('does not write when false', async t => {
+    const cache = t.testdir()
+    process.env.npm_config_cache = cache
     const { Npm } = mockNpm(t)
     const npm = new Npm()
     await npm.load()

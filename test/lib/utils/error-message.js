@@ -1,7 +1,8 @@
 const t = require('tap')
 const path = require('path')
+const { resolve } = require('path')
 const { real: mockNpm } = require('../../fixtures/mock-npm.js')
-const { Npm, filteredLogs: logs } = mockNpm(t, {
+const { Npm, filteredLogs: logs, logs: _logs } = mockNpm(t, {
   '../../package.json': {
     version: '123.456.789-npm',
   },
@@ -40,8 +41,6 @@ t.before(async () => {
   npm.version = '123.456.789-npm'
   unloadedNpm.version = '123.456.789-npm'
 })
-
-const { resolve } = require('path')
 
 const EXPLAIN_CALLED = []
 const mocks = {
@@ -225,6 +224,7 @@ t.test('eacces/eperm', t => {
     })
 
     if (loaded) {
+      console.log(_logs)
       t.matchSnapshot(errorMessage(er, npm))
       t.matchSnapshot(logs('verb'))
     } else {

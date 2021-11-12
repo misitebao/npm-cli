@@ -28,7 +28,7 @@ const RealMockNpm = (t, otherMocks = {}) => {
       // The message can be of arbitrary length
       // which is transfored to a single string by
       // logs and display separately
-      .map(([__, p, ...m]) => prefix ? m : [p, ...m])
+      .map(([__, p, ...m]) => prefix ? m.length <= 1 ? m[0] : m : [p, ...m])
   }
 
   const Npm = t.mock('../../lib/npm.js', {
@@ -51,14 +51,17 @@ const RealMockNpm = (t, otherMocks = {}) => {
 
   mock.Npm = MockNpm
 
-  t.teardown((t) => {
+  t.afterEach(() => {
+    mock.outputs.length = 0
+    mock.logs.length = 0
+    mock.timers = {}
+  })
+
+  t.teardown(() => {
     process.title = title
     process.execPath = execPath
     delete process.env.npm_command
     delete process.env.COLOR
-    mock.outputs.length = 0
-    mock.logs.length = 0
-    mock.timers = {}
     if (instance) {
       instance.unload()
       instance = null
