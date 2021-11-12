@@ -12,8 +12,9 @@ module.exports = (fn, mocks = {}) => ({
   },
   // Assign mocked properties directly to npmlog
   // and then mock with that object. This is necessary
-  // so tests can still directly set `log.level = 'silent'
-  // but again, this should go away with npmlog
+  // so tests can still directly set `log.level = 'silent'`
+  // and have that reflected in the npmlog singleton.
+  // XXX: remove with npmlog
   npmlog: Object.assign(npmlog, {
     timing: (...args) => fn('timing', ...args),
     ...mocks.npmlog,

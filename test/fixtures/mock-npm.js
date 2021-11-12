@@ -5,19 +5,35 @@ const mockLogs = require('./mock-logs')
 // awaiting npm.load() unless told not to (for npm tests for example).  Ideally
 // the prefix of an empty dir is inferred rather than explicitly set
 const RealMockNpm = (t, otherMocks = {}) => {
+  let instance = null
   const mock = {}
   mock.logs = []
   mock.outputs = []
+  mock.timers = {}
   mock.joinedOutput = () => {
     return mock.outputs.map(o => o.join(' ')).join('\n')
   }
-  mock.filteredLogs = title => mock.logs.filter(([t]) => t === title).map(([, , msg]) => msg)
+  mock.filteredLogs = (filter) => {
+    // Split on first ':' only since prefix can contain ':'
+    const [title, prefix] = typeof filter === 'string' ? filter.split(/:(.+)/) : []
+    const f = typeof filter === 'function'
+      ? filter
+      // Filter on title and optionally prefix
+      : ([t, p]) => t === title && (prefix ? p === prefix : true)
 
-  let instance = null
-  const logMocks = mockLogs((...args) => mock.logs.push(args))
+    return mock.logs
+      .filter(f)
+      // If we filter on the prefix also then just return
+      // the message, otherwise return both
+      // The message can be of arbitrary length
+      // which is transfored to a single string by
+      // logs and display separately
+      .map(([__, p, ...m]) => prefix ? m : [p, ...m])
+  }
+
   const Npm = t.mock('../../lib/npm.js', {
-    ...logMocks,
     ...otherMocks,
+    ...mockLogs((...args) => mock.logs.push(args), otherMocks),
   })
 
   class MockNpm extends Npm {
@@ -35,20 +51,16 @@ const RealMockNpm = (t, otherMocks = {}) => {
 
   mock.Npm = MockNpm
 
-  t.afterEach(() => {
-    mock.outputs.length = 0
-    mock.logs.length = 0
-  })
-
-  t.teardown(() => {
+  t.teardown((t) => {
     process.title = title
     process.execPath = execPath
     delete process.env.npm_command
     delete process.env.COLOR
+    mock.outputs.length = 0
+    mock.logs.length = 0
+    mock.timers = {}
     if (instance) {
-      instance.logFile.off()
-      instance.timers.off()
-      instance.display.off()
+      instance.unload()
       instance = null
     }
   })

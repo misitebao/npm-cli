@@ -22,7 +22,7 @@ t.test('should pack current directory with no arguments', async t => {
   await npm.exec('pack', [])
   const filename = 'test-package-1.0.0.tgz'
   t.strictSame(outputs, [[filename]])
-  t.matchSnapshot(filteredLogs('notice'), 'logs pack contents')
+  t.matchSnapshot(filteredLogs('notice').map(([, m]) => m), 'logs pack contents')
   t.ok(fs.statSync(path.resolve(npm.prefix, filename)))
 })
 
@@ -77,7 +77,7 @@ t.test('should log output as valid json', async t => {
   await npm.exec('pack', [])
   const filename = 'test-package-1.0.0.tgz'
   t.matchSnapshot(outputs.map(JSON.parse), 'outputs as json')
-  t.matchSnapshot(filteredLogs('notice'), 'logs pack contents')
+  t.matchSnapshot(filteredLogs('notice').map(([, m]) => m), 'logs pack contents')
   t.ok(fs.statSync(path.resolve(npm.prefix, filename)))
 })
 
@@ -96,7 +96,7 @@ t.test('dry run', async t => {
   await npm.exec('pack', [])
   const filename = 'test-package-1.0.0.tgz'
   t.strictSame(outputs, [[filename]])
-  t.matchSnapshot(filteredLogs('notice'), 'logs pack contents')
+  t.matchSnapshot(filteredLogs('notice').map(([, m]) => m), 'logs pack contents')
   t.throws(() => fs.statSync(path.resolve(npm.prefix, filename)))
 })
 

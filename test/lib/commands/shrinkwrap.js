@@ -13,7 +13,7 @@ t.formatSnapshot = obj =>
     (k, v) => {
       try {
         return JSON.parse(v)
-      } catch (_) {}
+      } catch {}
       return v
     },
     2
@@ -39,7 +39,7 @@ const shrinkwrap = async (t, testdir = {}, config = {}, mocks = {}) => {
 
   const newFile = resolve(npm.localPrefix, 'npm-shrinkwrap.json')
   const oldFile = resolve(npm.localPrefix, 'package-lock.json')
-  const notices = filteredLogs('notice')
+  const notices = filteredLogs('notice').map(([, m]) => m)
   const warnings = filteredLogs('warn')
 
   t.notOk(fs.existsSync(oldFile), 'package-lock is always deleted')

@@ -193,11 +193,7 @@ class Sandbox extends EventEmitter {
     if (this[_parent]) {
       sandboxes.delete(this[_parent])
     }
-
-    this[_npm].timers.off()
-    this[_npm].logFile.off()
-    this[_npm].display.off()
-
+    this[_npm].unload()
     return rimraf(this[_dirs].temp).catch(() => null)
   }
 

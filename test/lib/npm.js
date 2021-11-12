@@ -1,6 +1,5 @@
 const t = require('tap')
 
-const npmlog = require('npmlog')
 const { real: mockNpm } = require('../fixtures/mock-npm.js')
 
 // delete this so that we don't have configs from the fact that it
@@ -25,6 +24,7 @@ for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
   delete process.env[env]
 }
 
+const fs = require('fs').promises
 const { resolve, dirname } = require('path')
 
 const actualPlatform = process.platform
@@ -42,7 +42,7 @@ const bePosix = () => {
 }
 const argv = [...process.argv]
 
-t.afterEach(() => {
+t.afterEach((t) => {
   for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
     delete process.env[env]
   }
@@ -58,7 +58,7 @@ const CACHE = t.testdir()
 process.env.npm_config_cache = CACHE
 
 t.test('not yet loaded', async t => {
-  const { Npm, logs } = mockNpm(t)
+  const { Npm } = mockNpm(t)
   const npm = new Npm()
   t.match(npm, {
     started: Number,
@@ -73,7 +73,6 @@ t.test('not yet loaded', async t => {
   })
   t.throws(() => npm.config.set('foo', 'bar'))
   t.throws(() => npm.config.get('foo'))
-  t.same(logs, [])
   t.end()
 })
 
@@ -103,7 +102,7 @@ t.test('npm.load', async t => {
   })
 
   t.test('basic loading', async t => {
-    const { Npm, logs } = mockNpm(t)
+    const { Npm, filteredLogs } = mockNpm(t)
     const npm = new Npm()
     const dir = t.testdir({
       node_modules: {},
@@ -118,9 +117,7 @@ t.test('npm.load', async t => {
     t.match(npm, {
       flatOptions: {},
     })
-    t.match(logs, [
-      ['timing', 'npm:load', /Completed in [0-9.]+ms/],
-    ])
+    t.match(filteredLogs('timing:npm:load'), /Completed in [0-9.]+ms/)
 
     bePosix()
     t.equal(resolve(npm.cache), resolve(CACHE), 'cache is cache')
@@ -171,12 +168,11 @@ t.test('npm.load', async t => {
 
   t.test('forceful loading', async t => {
     process.argv = [...process.argv, '--force', '--color', 'always']
-    const { Npm, logs } = mockNpm(t)
+    const { Npm, filteredLogs } = mockNpm(t)
     const npm = new Npm()
     await npm.load()
-    t.match(logs.filter(l => l[0] !== 'timing'), [
+    t.match(filteredLogs('warn'), [
       [
-        'warn',
         'using --force',
         'Recommended protections disabled.',
       ],
@@ -208,30 +204,26 @@ t.test('npm.load', async t => {
       process.env.PATH = PATH
     })
 
-    const { Npm, logs, outputs } = mockNpm(t)
+    const { Npm, logs, outputs, filteredLogs } = mockNpm(t)
     const npm = new Npm()
     await npm.load()
     t.equal(npm.config.get('scope'), '@foo', 'added the @ sign to scope')
-    t.match(logs.filter(l => l[0] !== 'timing' || !/^config:/.test(l[1])), [
+    t.match([
+      ...filteredLogs('timing:npm:load:whichnode'),
+      ...filteredLogs('verbose'),
+      ...filteredLogs('timing:npm:load'),
+    ], [
+      /Completed in [0-9.]+ms/,
       [
-        'timing',
-        'npm:load:whichnode',
-        /Completed in [0-9.]+ms/,
-      ],
-      [
-        'verbose',
         'node symlink',
         resolve(dir, 'bin', node),
       ],
-      [
-        'timing',
-        'npm:load',
-        /Completed in [0-9.]+ms/,
-      ],
+      /Completed in [0-9.]+ms/,
     ])
     t.equal(process.execPath, resolve(dir, 'bin', node))
 
     outputs.length = 0
+    logs.length = 0
     await npm.exec('ll', [])
 
     t.equal(npm.command, 'll', 'command set to first npm command')
@@ -465,39 +457,65 @@ t.test('set process.title', async t => {
   })
 })
 
-t.test('timings', t => {
-  const { Npm, logs } = mockNpm(t)
-  const npm = new Npm()
-  process.emit('time', 'foo')
-  process.emit('time', 'bar')
-  t.match(npm.timers.unfinished.get('foo'), Number, 'foo timer is a number')
-  t.match(npm.timers.unfinished.get('bar'), Number, 'foo timer is a number')
-  process.emit('timeEnd', 'foo')
-  process.emit('timeEnd', 'bar')
-  process.emit('timeEnd', 'baz')
-  t.match(logs, [
-    ['timing', 'foo', /Completed in [0-9]+ms/],
-    ['timing', 'bar', /Completed in [0-9]+ms/],
-    [
-      'silly',
+t.test('timings', async t => {
+  t.test('gets/sets timers', t => {
+    const { Npm, filteredLogs } = mockNpm(t)
+    const npm = new Npm()
+    process.emit('time', 'foo')
+    process.emit('time', 'bar')
+    t.match(npm.unfinishedTimers.get('foo'), Number, 'foo timer is a number')
+    t.match(npm.unfinishedTimers.get('bar'), Number, 'foo timer is a number')
+    process.emit('timeEnd', 'foo')
+    process.emit('timeEnd', 'bar')
+    process.emit('timeEnd', 'baz')
+    t.match(filteredLogs('timing'), [
+      ['foo', /Completed in [0-9]+ms/],
+      ['bar', /Completed in [0-9]+ms/],
+    ])
+    t.match(filteredLogs('silly'), [[
       'timing',
       "Tried to end timer that doesn't exist:",
       'baz',
-    ],
-  ])
-  t.notOk(npm.timers.unfinished.has('foo'), 'foo timer is gone')
-  t.notOk(npm.timers.unfinished.has('bar'), 'bar timer is gone')
-  t.match(npm.timers.finished, { foo: Number, bar: Number })
-  t.end()
+    ]])
+    t.notOk(npm.unfinishedTimers.has('foo'), 'foo timer is gone')
+    t.notOk(npm.unfinishedTimers.has('bar'), 'bar timer is gone')
+    t.match(npm.finishedTimers, { foo: Number, bar: Number })
+    t.end()
+  })
+
+  t.test('writes timers', async t => {
+    const { Npm } = mockNpm(t)
+    const npm = new Npm()
+    await npm.load()
+    npm.config.set('timing', true)
+    npm.unload()
+    const timings = JSON.parse(await fs.readFile(resolve(npm.cache, '_timing.json'), 'utf-8'))
+    t.match(timings, {
+      command: [],
+      logfile: [],
+      version: String,
+      unfinished: {},
+      'npm:load': Number,
+    })
+  })
+
+  t.test('does not write when false', async t => {
+    const { Npm } = mockNpm(t)
+    const npm = new Npm()
+    await npm.load()
+    npm.config.set('timing', false)
+    npm.unload()
+    await t.rejects(() => fs.readFile(resolve(npm.cache, '_timing.json')))
+  })
 })
 
 t.test('output clears progress and console.logs the message', t => {
+  t.plan(2)
   let showingProgress = true
   const mock = mockNpm(t, {
     npmlog: {
       clearProgress: () => showingProgress = false,
       showProgress: () => showingProgress = true,
-      ...npmlog,
     },
   })
   const { Npm, logs } = mock
@@ -512,13 +530,12 @@ t.test('output clears progress and console.logs the message', t => {
     console.log = log
   })
   npm.output('hello')
-  t.strictSame(logs, [['hello']])
+  t.match(logs, [['pause'], ['hello']])
   t.end()
 })
 
 t.test('unknown command', async t => {
-  const mock = mockNpm(t)
-  const { Npm } = mock
+  const { Npm } = mockNpm(t)
   const npm = new Npm()
   await t.rejects(
     npm.cmd('thisisnotacommand'),
