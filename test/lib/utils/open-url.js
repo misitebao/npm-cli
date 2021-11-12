@@ -41,7 +41,7 @@ t.test('opens a url', async t => {
   t.same(OUTPUT, [], 'printed no output')
 })
 
-t.test('returns error for non-https and non-file url', async t => {
+t.test('returns error for non-https url', async t => {
   t.teardown(() => {
     openerUrl = null
     openerOpts = null
@@ -54,6 +54,34 @@ t.test('returns error for non-https and non-file url', async t => {
   )
   t.equal(openerUrl, null, 'did not open')
   t.same(openerOpts, null, 'did not open')
+  t.same(OUTPUT, [], 'printed no output')
+})
+
+t.test('returns error for file url', async t => {
+  t.teardown(() => {
+    openerUrl = null
+    openerOpts = null
+    OUTPUT.length = 0
+  })
+  await t.rejects(
+    openUrl(npm, 'file:///usr/local/bin/ls', 'npm home'),
+    /Invalid URL/,
+    'got the correct error'
+  )
+  t.equal(openerUrl, null, 'did not open')
+  t.same(openerOpts, null, 'did not open')
+  t.same(OUTPUT, [], 'printed no output')
+})
+
+t.test('file url allowed if explicitly asked for', async t => {
+  t.teardown(() => {
+    openerUrl = null
+    openerOpts = null
+    OUTPUT.length = 0
+  })
+  await openUrl(npm, 'file:///man/page/npm-install', 'npm home', true)
+  t.equal(openerUrl, 'file:///man/page/npm-install', 'opened the given url')
+  t.same(openerOpts, { command: null }, 'passed command as null (the default)')
   t.same(OUTPUT, [], 'printed no output')
 })
 
