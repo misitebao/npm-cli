@@ -58,7 +58,7 @@ t.afterEach((t) => {
 })
 
 t.test('not yet loaded', async t => {
-  const { Npm } = mockNpm(t)
+  const { Npm, logs } = mockNpm(t)
   const npm = new Npm()
   t.match(npm, {
     started: Number,
@@ -73,6 +73,7 @@ t.test('not yet loaded', async t => {
   })
   t.throws(() => npm.config.set('foo', 'bar'))
   t.throws(() => npm.config.get('foo'))
+  t.same(logs, [])
   t.end()
 })
 

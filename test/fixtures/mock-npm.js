@@ -110,9 +110,6 @@ class MockNpm {
 }
 
 const FakeMockNpm = (base = {}) => {
-  if (base.log) {
-    throw new Error('I need to find all of these')
-  }
   return new MockNpm(base)
 }
 

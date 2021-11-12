@@ -3,7 +3,7 @@ const EventEmitter = require('events')
 const os = require('os')
 const fs = require('fs')
 const path = require('path')
-const npmlog = require('npmlog')
+const log = require('../../../lib/utils/log-shim')
 
 // generates logfile name with mocked date
 // this is set on init so mock it before requiring logfile
@@ -30,7 +30,7 @@ const cacheFolder = t.testdir({})
 const logFile = path.resolve(cacheFolder, '_logs', 'expecteddate-debug-0.log')
 const timingFile = path.resolve(cacheFolder, '_timing.json')
 
-const { Npm } = mockNpm(t, {
+const { Npm, filteredLogs } = mockNpm(t, {
   '../../package.json': {
     version: '1.0.0',
   },
@@ -91,7 +91,7 @@ t.teardown(() => {
 
 t.afterEach(() => {
   errors.length = 0
-  npmlog.level = 'silent'
+  log.level = 'silent'
   delete process.exitCode
 })
 
@@ -107,7 +107,7 @@ const exitHandler = t.mock('../../../lib/utils/exit-handler.js', mocks)
 exitHandler.setNpm(npm)
 
 t.test('exit handler never called - loglevel silent', (t) => {
-  npmlog.level = 'silent'
+  log.level = 'silent'
   process.emit('exit', 1)
   const logData = fs.readFileSync(logFile, 'utf8')
   t.match(logData, 'Exit handler never called!')
@@ -116,7 +116,7 @@ t.test('exit handler never called - loglevel silent', (t) => {
 })
 
 t.test('exit handler never called - loglevel notice', (t) => {
-  npmlog.level = 'notice'
+  log.level = 'notice'
   process.emit('exit', 1)
   const logData = fs.readFileSync(logFile, 'utf8')
   t.match(logData, 'Exit handler never called!')
@@ -127,7 +127,7 @@ t.test('exit handler never called - loglevel notice', (t) => {
 t.test('handles unknown error', (t) => {
   t.plan(2)
 
-  npmlog.level = 'notice'
+  log.level = 'notice'
 
   process.once('timeEnd', (msg) => {
     t.equal(msg, 'npm', 'should trigger timeEnd for npm')
@@ -196,7 +196,7 @@ t.test('throw a non-error obj', (t) => {
   })
   exitHandler(weirdError)
   t.match(
-    npmlog.record.find(r => r.level === 'error'),
+    filteredLogs('error'),
     { message: 'foo bar' }
   )
 })
@@ -210,7 +210,7 @@ t.test('throw a string error', (t) => {
   })
   exitHandler(error)
   t.match(
-    npmlog.record.find(r => r.level === 'error'),
+    filteredLogs('error'),
     { message: 'foo bar' }
   )
 })
@@ -218,7 +218,7 @@ t.test('throw a string error', (t) => {
 t.test('update notification', (t) => {
   const updateMsg = 'you should update npm!'
   npm.updateNotification = updateMsg
-  npmlog.level = 'silent'
+  log.level = 'silent'
 
   t.teardown(() => {
     delete npm.updateNotification
@@ -226,7 +226,7 @@ t.test('update notification', (t) => {
 
   exitHandler()
   t.match(
-    npmlog.record.find(r => r.level === 'notice'),
+    filteredLogs('notice'),
     { message: 'you should update npm!' }
   )
   t.end()
@@ -343,7 +343,7 @@ t.test('defaults to log error msg if stack is missing', (t) => {
 t.skip('exits uncleanly when only emitting exit event', (t) => {
   t.plan(2)
 
-  npmlog.level = 'silent'
+  log.level = 'silent'
   process.emit('exit')
   const logData = fs.readFileSync(logFile, 'utf8')
   t.match(logData, 'Exit handler never called!')
@@ -361,8 +361,8 @@ t.test('do no fancy handling for shellouts', t => {
   })
   t.beforeEach(() => LOG_RECORD.length = 0)
 
-  const loudNoises = () => npmlog.record
-    .filter(({ level }) => ['warn', 'error'].includes(level))
+  const loudNoises = () =>
+    filteredLogs(([level]) => ['warn', 'error'].includes(level))
 
   t.test('shellout with a numeric error code', t => {
     t.plan(2)

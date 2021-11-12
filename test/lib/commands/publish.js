@@ -1,13 +1,13 @@
 const t = require('tap')
 const { fake: mockNpm } = require('../../fixtures/mock-npm')
 const fs = require('fs')
+const log = require('../../../lib/utils/log-shim')
 
 // The way we set loglevel is kind of convoluted, and there is no way to affect
 // it from these tests, which only interact with lib/publish.js, which assumes
 // that the code that is requiring and calling lib/publish.js has already
 // taken care of the loglevel
-const npmlog = require('npmlog')
-npmlog.level = 'silent'
+log.level = 'silent'
 
 t.cleanSnapshot = data => {
   return data.replace(/^ *"gitHead": .*$\n/gm, '')
@@ -19,7 +19,7 @@ const defaults = Object.entries(definitions).reduce((defaults, [key, def]) => {
   return defaults
 }, {})
 
-t.afterEach(() => (npmlog.level = 'silent'))
+t.afterEach(() => (log.level = 'silent'))
 
 t.test(
   /* eslint-disable-next-line max-len */
@@ -140,7 +140,7 @@ t.test('if loglevel=info and json, should not output package contents', async t 
     ),
   })
 
-  npmlog.level = 'info'
+  log.level = 'info'
   const Publish = t.mock('../../../lib/commands/publish.js', {
     '../../../lib/utils/tar.js': {
       getContents: () => ({
@@ -188,7 +188,7 @@ t.test(
       ),
     })
 
-    npmlog.level = 'silent'
+    log.level = 'silent'
     const Publish = t.mock('../../../lib/commands/publish.js', {
       '../../../lib/utils/tar.js': {
         getContents: () => ({
@@ -237,7 +237,7 @@ t.test(
       ),
     })
 
-    npmlog.level = 'info'
+    log.level = 'info'
     const Publish = t.mock('../../../lib/commands/publish.js', {
       '../../../lib/utils/tar.js': {
         getContents: () => ({
@@ -595,14 +595,14 @@ t.test('workspaces', t => {
   const publish = new Publish(npm)
 
   t.test('all workspaces', async t => {
-    npmlog.level = 'info'
+    log.level = 'info'
     await publish.execWorkspaces([], [])
     t.matchSnapshot(publishes, 'should publish all workspaces')
     t.matchSnapshot(outputs, 'should output all publishes')
   })
 
   t.test('one workspace', async t => {
-    npmlog.level = 'info'
+    log.level = 'info'
     await publish.execWorkspaces([], ['workspace-a'])
     t.matchSnapshot(publishes, 'should publish given workspace')
     t.matchSnapshot(outputs, 'should output one publish')
@@ -614,7 +614,7 @@ t.test('workspaces', t => {
   })
 
   t.test('json', async t => {
-    npmlog.level = 'info'
+    log.level = 'info'
     npm.config.set('json', true)
     await publish.execWorkspaces([], [])
     t.matchSnapshot(publishes, 'should publish all workspaces')
@@ -683,7 +683,7 @@ t.only('private workspaces', async t => {
   t.test('with color', async t => {
     t.plan(4)
 
-    npmlog.level = 'info'
+    log.level = 'info'
     const Publish = t.mock('../../../lib/commands/publish.js', {
       ...mocks,
       'proc-log': {
@@ -712,7 +712,7 @@ t.only('private workspaces', async t => {
   t.test('colorless', async t => {
     t.plan(4)
 
-    npmlog.level = 'info'
+    log.level = 'info'
     const Publish = t.mock('../../../lib/commands/publish.js', {
       ...mocks,
       'proc-log': {
@@ -783,7 +783,7 @@ t.test('runs correct lifecycle scripts', async t => {
   })
 
   const scripts = []
-  npmlog.level = 'info'
+  log.level = 'info'
   const Publish = t.mock('../../../lib/commands/publish.js', {
     '@npmcli/run-script': args => {
       scripts.push(args)
@@ -834,7 +834,7 @@ t.test('does not run scripts on --ignore-scripts', async t => {
     ),
   })
 
-  npmlog.level = 'info'
+  log.level = 'info'
   const Publish = t.mock('../../../lib/commands/publish.js', {
     '@npmcli/run-script': () => {
       t.fail('should not call run-script')

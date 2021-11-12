@@ -2,13 +2,13 @@ const t = require('tap')
 const path = require('path')
 const { resolve } = require('path')
 const { real: mockNpm } = require('../../fixtures/mock-npm.js')
-const { Npm, filteredLogs: logs, logs: _logs } = mockNpm(t, {
+const { Npm, ...loaded } = mockNpm(t, {
   '../../package.json': {
     version: '123.456.789-npm',
   },
 })
 const npm = new Npm()
-const { Npm: UnloadedNpm, filteredLogs: unloadedLogs } = mockNpm(t, {
+const { Npm: UnloadedNpm, ...unloaded } = mockNpm(t, {
   '../../package.json': {
     version: '123.456.789-npm',
   },
@@ -207,6 +207,11 @@ t.test('args are cleaned', t => {
 })
 
 t.test('eacces/eperm', t => {
+  t.afterEach(() => {
+    loaded.logs.length = 0
+    unloaded.logs.length = 0
+  })
+
   const runTest = (windows, loaded, cachePath, cacheDest) => t => {
     if (windows) {
       beWindows()
@@ -224,12 +229,11 @@ t.test('eacces/eperm', t => {
     })
 
     if (loaded) {
-      console.log(_logs)
       t.matchSnapshot(errorMessage(er, npm))
-      t.matchSnapshot(logs('verb'))
+      t.matchSnapshot(loaded.filteredLogs('verbose'))
     } else {
       t.matchSnapshot(errorMessage(er, unloadedNpm))
-      t.matchSnapshot(unloadedLogs('verb'))
+      t.matchSnapshot(unloaded.filteredLogs('verbose'))
     }
 
     t.end()
