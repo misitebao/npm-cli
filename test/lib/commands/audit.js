@@ -104,7 +104,7 @@ t.test('report endpoint error', async t => {
   npm.config.set('json', false)
   t.test('json=false', async t => {
     await t.rejects(npm.exec('audit', []), 'audit endpoint returned an error')
-    t.match(filteredLogs('warn'), ['hello, this didnt work'])
+    t.match(filteredLogs('warn').map(([, m]) => m), ['hello, this didnt work'])
     t.strictSame(outputs, [['this is a string']])
   })
 
@@ -114,7 +114,7 @@ t.test('report endpoint error', async t => {
     })
     npm.config.set('json', true)
     await t.rejects(npm.exec('audit', []), 'audit endpoint returned an error')
-    t.match(filteredLogs('warn'), ['hello, this didnt work'])
+    t.match(filteredLogs('warn').map(([, m]) => m), ['hello, this didnt work'])
     t.strictSame(outputs, [[
       '{\n' +
       '  "message": "hello, this didnt work",\n' +

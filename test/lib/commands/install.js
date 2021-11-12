@@ -41,7 +41,7 @@ t.test('with args, dev=true', async t => {
 
   await npm.exec('install', ['fizzbuzz'])
   t.match(
-    filteredLogs('warn'),
+    filteredLogs('warn').map(([, m]) => m),
     ['Usage of the `--dev` option is deprecated. Use `--include=dev` instead.']
   )
   t.match(

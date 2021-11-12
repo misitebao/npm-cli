@@ -73,7 +73,7 @@ t.test('not yet loaded', async t => {
   })
   t.throws(() => npm.config.set('foo', 'bar'))
   t.throws(() => npm.config.get('foo'))
-  t.same(logs, [])
+  t.same(logs, [['pause']])
   t.end()
 })
 

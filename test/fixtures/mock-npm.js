@@ -20,14 +20,12 @@ const RealMockNpm = (t, otherMocks = {}) => {
       ? filter
       // Filter on title and optionally prefix
       : ([t, p]) => t === title && (prefix ? p === prefix : true)
-
     return mock.logs
       .filter(f)
       // If we filter on the prefix also then just return
       // the message, otherwise return both
       // The message can be of arbitrary length
-      // which is transfored to a single string by
-      // logs and display separately
+      // but if theres only one part then unwrap and return that
       .map(([__, p, ...m]) => prefix ? m.length <= 1 ? m[0] : m : [p, ...m])
   }
 
