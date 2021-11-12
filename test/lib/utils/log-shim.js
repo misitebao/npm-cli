@@ -34,8 +34,8 @@ t.test('has properties', (t) => {
   t.match(Object.keys(shim), [
     // Properties
     'level',
-    'levels',
     'heading',
+    'levels',
     'gauge',
     'stream',
     'tracker',
@@ -89,9 +89,30 @@ t.test('works with npmlog/proclog proxy', t => {
 
   t.ok(shim.enableColor(), 'can call method on shim to call npmlog')
   t.equal(shim.silly(), 'SILLY', 'can call method on proclog')
-  t.throws(() => Object.defineProperty(shim, 'x', {}), 'cant define other properties')
-  t.throws(() => shim.x = 100, 'cant set other properies')
-  t.throws(() => delete shim.level, 'cant delete property')
+  t.notOk(shim.LEVELS, 'only includes levels from npmlog')
+  t.throws(() => shim.gauge = 100, 'cant set getters properies')
+
+  t.end()
+})
+
+t.test('works with npmlog/proclog proxy', t => {
+  const shim = makeShim()
+
+  const loggers = [
+    'notice',
+    'error',
+    'warn',
+    'info',
+    'verbose',
+    'http',
+    'silly',
+    'pause',
+    'resume',
+  ]
+
+  loggers.forEach((k) => {
+    t.doesNotThrow(() => shim[k]('test'))
+  })
 
   t.end()
 })
