@@ -15,26 +15,31 @@ const { Npm: UnloadedNpm, ...unloadedMocks } = mockNpm(t, {
 })
 const unloadedNpm = new UnloadedNpm()
 
-// make a bunch of stuff consistent for snapshots
-
-process.getuid = () => 867
-process.getgid = () => 5309
-
-Object.defineProperty(process, 'arch', {
-  value: 'x64',
-  configurable: true,
-})
-
-Object.defineProperty(process, 'version', {
-  value: '123.456.789-node',
-  configurable: true,
-})
+const {
+  getuid: getuidActual,
+  getgid: getgidActual,
+  arch: archActual,
+  version: versionActual,
+  platform: platformActual,
+} = process
 
 const CACHE = '/some/cache/dir'
 const testdir = t.testdir({})
 let EXPLAIN_CALLED = []
 
 t.before(async () => {
+  // make a bunch of stuff consistent for snapshots
+  process.getuid = () => 867
+  process.getgid = () => 5309
+  Object.defineProperty(process, 'arch', {
+    value: 'x64',
+    configurable: true,
+  })
+  Object.defineProperty(process, 'version', {
+    value: '123.456.789-node',
+    configurable: true,
+  })
+
   await npm.load()
   npm.localPrefix = testdir
   unloadedNpm.localPrefix = testdir
@@ -46,12 +51,39 @@ t.before(async () => {
 
 t.afterEach(() => {
   EXPLAIN_CALLED = []
+  Object.defineProperty(process, 'platform', {
+    value: 'posix',
+    configurable: true,
+  })
+})
+
+t.teardown(() => {
+  Object.defineProperty(process, 'getuid', {
+    value: getuidActual,
+    configurable: true,
+  })
+  Object.defineProperty(process, 'getgid', {
+    value: getgidActual,
+    configurable: true,
+  })
+  Object.defineProperty(process, 'arch', {
+    value: archActual,
+    configurable: true,
+  })
+  Object.defineProperty(process, 'version', {
+    value: versionActual,
+    configurable: true,
+  })
+  Object.defineProperty(process, 'platform', {
+    value: platformActual,
+    configurable: true,
+  })
 })
 
 const errorMessage = (er, _npm, windows) => {
-  if (typeof windows === 'boolean') {
+  if (windows) {
     Object.defineProperty(process, 'platform', {
-      value: windows ? 'win32' : 'posix',
+      value: 'win32',
       configurable: true,
     })
   }
