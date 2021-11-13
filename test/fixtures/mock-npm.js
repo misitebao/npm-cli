@@ -3,8 +3,8 @@ const mockLogs = require('./mock-logs')
 
 // Eventually this should default to having a prefix of an empty testdir, and
 // awaiting npm.load() unless told not to (for npm tests for example).  Ideally
-// the prefix of an empty dir is inferred rather than explicitly set
-const RealMockNpm = (t, otherMocks = {}) => {
+// the prefix of an empty dir is inferred rather than explicitly set  
+const RealMockNpm = (t, otherMocks = {}, options = {}) => {
   let instance = null
   const mock = {}
   mock.logs = []
@@ -77,6 +77,28 @@ const RealMockNpm = (t, otherMocks = {}) => {
   return mock
 }
 
+const LoadMockNpm = async (t, options = {}) => {
+  const {
+    mocks = {},
+    testdir = {},
+    config = {},
+  } = options
+  const dir = t.testdir(testdir)
+  const { Npm, ...rest } = RealMockNpm(t, mocks)
+  const npm = new Npm()
+  process.env.npm_config_cache = dir
+  await npm.load()
+  npm.prefix = dir
+  npm.cache = dir
+  for (const [k, v] of Object.entries(config)) {
+    npm.config.set(k, v)
+  }
+  return {
+    npm,
+    ...rest,
+  }
+}
+
 const realConfig = require('../../lib/utils/config')
 
 // Basic npm fixture that you can give a config object that acts like
@@ -122,4 +144,5 @@ const FakeMockNpm = (base = {}) => {
 module.exports = {
   fake: FakeMockNpm,
   real: RealMockNpm,
+  load: LoadMockNpm,
 }
