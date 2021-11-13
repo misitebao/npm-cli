@@ -4,17 +4,7 @@ const os = require('os')
 const fs = require('fs')
 const path = require('path')
 const log = require('../../../lib/utils/log-shim')
-
-// generates logfile name with mocked date
-// this is set on init so mock it before requiring logfile
-const _toISOString = Date.prototype.toISOString
-Date.prototype.toISOString = () => 'expecteddate'
-
 const { real: mockNpm } = require('../../fixtures/mock-npm')
-
-// generic error to be used in tests
-const err = Object.assign(new Error('ERROR'), { code: 'ERROR' })
-err.stack = 'Error: ERROR'
 
 const redactCwd = (path) => {
   const normalizePath = p => p
@@ -26,11 +16,15 @@ const redactCwd = (path) => {
 
 t.cleanSnapshot = (str) => redactCwd(str)
 
+// generic error to be used in tests
+const err = Object.assign(new Error('ERROR'), { code: 'ERROR' })
+err.stack = 'Error: ERROR'
+
 const cacheFolder = t.testdir({})
 const logFile = path.resolve(cacheFolder, '_logs', 'expecteddate-debug-0.log')
 const timingFile = path.resolve(cacheFolder, '_timing.json')
 
-const { Npm, filteredLogs } = mockNpm(t, {
+const { Npm, filteredLogs, logMocks } = mockNpm(t, {
   '../../package.json': {
     version: '1.0.0',
   },
@@ -38,6 +32,7 @@ const { Npm, filteredLogs } = mockNpm(t, {
 const npm = new Npm()
 
 t.before(async () => {
+  process.env.npm_config_cache = cacheFolder
   await npm.load()
   npm.config.set('cache', cacheFolder)
 })
@@ -46,6 +41,11 @@ t.test('bootstrap tap before cutting off process ref', (t) => {
   t.ok('ok')
   t.end()
 })
+
+// generates logfile name with mocked date
+// this is set on init so mock it before requiring logfile
+const _toISOString = Date.prototype.toISOString
+Date.prototype.toISOString = () => 'expecteddate'
 
 // cut off process from script so that it won't quit the test runner
 // while trying to run through the myriad of cases
@@ -69,9 +69,9 @@ process = Object.assign(
   }
 )
 
+// overrides OS type/release for cross platform snapshots
 const osType = os.type
 const osRelease = os.release
-// overrides OS type/release for cross platform snapshots
 os.type = () => 'Foo'
 os.release = () => '1.0.0'
 
@@ -80,14 +80,6 @@ const errors = []
 console.error = (err) => {
   errors.push(err)
 }
-t.teardown(() => {
-  os.type = osType
-  os.release = osRelease
-  // needs to put process back in its place in order for tap to exit properly
-  process = _process
-  Date.prototype.toISOString = _toISOString
-  console.error = consoleError
-})
 
 t.afterEach(() => {
   errors.length = 0
@@ -95,16 +87,28 @@ t.afterEach(() => {
   delete process.exitCode
 })
 
-const mocks = {
-  '../../../lib/utils/error-message.js': (err) => ({
-    ...err,
-    summary: [['ERR', err.message]],
-    detail: [['ERR', err.message]],
-  }),
-}
+t.teardown(() => {
+  os.type = osType
+  os.release = osRelease
+  // needs to put process back in its place in order for tap to exit properly
+  process = _process
+  Date.prototype.toISOString = _toISOString
+  console.error = consoleError
+  delete process.env.npm_config_cache
+})
 
-const exitHandler = t.mock('../../../lib/utils/exit-handler.js', mocks)
-exitHandler.setNpm(npm)
+const exitHandler = (...args) => {
+  const e = t.mock('../../../lib/utils/exit-handler.js', {
+    '../../../lib/utils/error-message.js': (err) => ({
+      ...err,
+      summary: [['ERR', err.message]],
+      detail: [['ERR', err.message]],
+    }),
+    ...logMocks,
+  })
+  e.setNpm(npm)
+  return e(...args)
+}
 
 t.test('exit handler never called - loglevel silent', (t) => {
   log.level = 'silent'
@@ -197,7 +201,7 @@ t.test('throw a non-error obj', (t) => {
   exitHandler(weirdError)
   t.match(
     filteredLogs('error'),
-    { message: 'foo bar' }
+    [['weird error', { message: 'foo bar' }]]
   )
 })
 
