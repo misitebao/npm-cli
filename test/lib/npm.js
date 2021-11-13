@@ -1,4 +1,6 @@
 const t = require('tap')
+const fs = require('fs').promises
+const { resolve, dirname } = require('path')
 
 const { real: mockNpm } = require('../fixtures/mock-npm.js')
 
@@ -24,10 +26,10 @@ for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
   delete process.env[env]
 }
 
-const fs = require('fs').promises
-const { resolve, dirname } = require('path')
-
+let CACHE = null
 const actualPlatform = process.platform
+const argv = [...process.argv]
+
 const beWindows = () => {
   Object.defineProperty(process, 'platform', {
     value: 'win32',
@@ -40,16 +42,16 @@ const bePosix = () => {
     configurable: true,
   })
 }
-const argv = [...process.argv]
 
-const CACHE = t.testdir()
-process.env.npm_config_cache = CACHE
+t.beforeEach((t) => {
+  CACHE = t.testdir()
+  process.env.npm_config_cache = CACHE
+})
 
-t.afterEach((t) => {
+t.afterEach(async (t) => {
   for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
     delete process.env[env]
   }
-  process.env.npm_config_cache = CACHE
   process.argv = argv
   Object.defineProperty(process, 'platform', {
     value: actualPlatform,
@@ -160,7 +162,6 @@ t.test('npm.load', async t => {
     beWindows()
     t.equal(npm.bin, npm.globalBin, 'bin is global bin in windows mode')
     t.equal(npm.dir, npm.globalDir, 'dir is global dir in windows mode')
-    bePosix()
 
     const tmp = npm.tmp
     t.match(tmp, String, 'npm.tmp is a string')
@@ -458,6 +459,23 @@ t.test('set process.title', async t => {
   })
 })
 
+t.test('debug-log', async t => {
+  const { Npm } = mockNpm(t)
+  const npm = new Npm()
+
+  const log1 = ['silly', 'test', 'before load']
+  const log2 = ['silly', 'test', 'after load']
+
+  process.emit('log', ...log1)
+  await npm.load()
+  process.emit('log', ...log2)
+
+  const [debug] = await Promise.all(npm.logFiles.map((f) => fs.readFile(f, 'utf-8')))
+  t.equal(npm.logFiles.length, 1, 'one debug file')
+  t.match(debug, log1.join(' '), 'before load appears')
+  t.match(debug, log2.join(' '), 'after load log appears')
+})
+
 t.test('timings', async t => {
   t.test('gets/sets timers', t => {
     const { Npm, filteredLogs } = mockNpm(t)
@@ -485,8 +503,6 @@ t.test('timings', async t => {
   })
 
   t.test('writes timers', async t => {
-    const cache = t.testdir()
-    process.env.npm_config_cache = cache
     const { Npm } = mockNpm(t)
     const npm = new Npm()
     await npm.load()
@@ -505,15 +521,13 @@ t.test('timings', async t => {
     })
   })
 
-  t.test('does not write when false', async t => {
-    const cache = t.testdir()
-    process.env.npm_config_cache = cache
+  t.test('does not write when timers false', async t => {
     const { Npm } = mockNpm(t)
     const npm = new Npm()
     await npm.load()
     npm.config.set('timing', false)
     npm.unload()
-    await t.rejects(() => fs.readFile(resolve(npm.cache, '_timing.json')))
+    await t.rejects(() => fs.readFile(resolve(npm.cache, '_timing.json'), 'utf-8'))
   })
 })
 
