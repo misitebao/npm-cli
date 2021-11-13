@@ -2,44 +2,46 @@ const t = require('tap')
 
 const makeShim = (mocks) => t.mock('../../../lib/utils/log-shim.js', mocks)
 
+const loggers = [
+  'notice',
+  'error',
+  'warn',
+  'info',
+  'verbose',
+  'http',
+  'silly',
+  'pause',
+  'resume',
+]
+
 t.test('has properties', (t) => {
   const shim = makeShim()
 
   t.match(shim, {
     level: String,
     levels: {},
-
     gauge: {},
     stream: {},
     heading: undefined,
-
     enableColor: Function,
     disableColor: Function,
     enableUnicode: Function,
     disableUnicode: Function,
     enableProgress: Function,
     disableProgress: Function,
-
-    notice: Function,
-    error: Function,
-    warn: Function,
-    info: Function,
-    verbose: Function,
-    http: Function,
-    silly: Function,
-    pause: Function,
-    resume: Function,
+    ...loggers.reduce((acc, l) => {
+      acc[l] = Function
+      return acc
+    }, {}),
   })
 
-  t.match(Object.keys(shim), [
-    // Properties
+  t.match(Object.keys(shim).sort(), [
     'level',
     'heading',
     'levels',
     'gauge',
     'stream',
     'tracker',
-    // npmlog setup methods
     'useColor',
     'enableColor',
     'disableColor',
@@ -51,17 +53,8 @@ t.test('has properties', (t) => {
     'showProgress',
     'newItem',
     'newGroup',
-    // Log methods
-    'notice',
-    'error',
-    'warn',
-    'info',
-    'verbose',
-    'http',
-    'silly',
-    'pause',
-    'resume',
-  ])
+    ...loggers,
+  ].sort())
 
   t.end()
 })
@@ -97,18 +90,6 @@ t.test('works with npmlog/proclog proxy', t => {
 
 t.test('works with npmlog/proclog proxy', t => {
   const shim = makeShim()
-
-  const loggers = [
-    'notice',
-    'error',
-    'warn',
-    'info',
-    'verbose',
-    'http',
-    'silly',
-    'pause',
-    'resume',
-  ]
 
   loggers.forEach((k) => {
     t.doesNotThrow(() => shim[k]('test'))

@@ -73,7 +73,7 @@ t.test('not yet loaded', async t => {
   })
   t.throws(() => npm.config.set('foo', 'bar'))
   t.throws(() => npm.config.get('foo'))
-  t.same(logs, [['pause']])
+  t.same(logs, [])
   t.end()
 })
 
@@ -538,7 +538,7 @@ t.test('output clears progress and console.logs the message', t => {
     console.log = log
   })
   npm.output('hello')
-  t.match(logs, [['pause'], ['hello']])
+  t.match(logs, [['hello']])
   t.end()
 })
 

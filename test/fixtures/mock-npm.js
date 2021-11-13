@@ -29,9 +29,17 @@ const RealMockNpm = (t, otherMocks = {}) => {
       .map(([__, p, ...m]) => prefix ? m.length <= 1 ? m[0] : m : [p, ...m])
   }
 
+  // Merge default mocks for logging with whatever mocks were
+  // passed in.
+  // XXX: this shouldn't be necessary and we should find a way
+  // to mock just logs but for now npmlog methods are mocked
+  // across many of the older tests
+  const logMocks = mockLogs((...args) => mock.logs.push(args), otherMocks)
+  mock.logMocks = logMocks
+
   const Npm = t.mock('../../lib/npm.js', {
     ...otherMocks,
-    ...mockLogs((...args) => mock.logs.push(args), otherMocks),
+    ...logMocks,
   })
 
   class MockNpm extends Npm {

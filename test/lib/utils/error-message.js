@@ -2,13 +2,13 @@ const t = require('tap')
 const path = require('path')
 const { resolve } = require('path')
 const { real: mockNpm } = require('../../fixtures/mock-npm.js')
-const { Npm, ...loaded } = mockNpm(t, {
+const { Npm, ...loadedMocks } = mockNpm(t, {
   '../../package.json': {
     version: '123.456.789-npm',
   },
 })
 const npm = new Npm()
-const { Npm: UnloadedNpm, ...unloaded } = mockNpm(t, {
+const { Npm: UnloadedNpm, ...unloadedMocks } = mockNpm(t, {
   '../../package.json': {
     version: '123.456.789-npm',
   },
@@ -32,6 +32,8 @@ Object.defineProperty(process, 'version', {
 
 const CACHE = '/some/cache/dir'
 const testdir = t.testdir({})
+let EXPLAIN_CALLED = []
+
 t.before(async () => {
   await npm.load()
   npm.localPrefix = testdir
@@ -42,35 +44,37 @@ t.before(async () => {
   unloadedNpm.version = '123.456.789-npm'
 })
 
-const EXPLAIN_CALLED = []
-const mocks = {
-  '../../../lib/utils/explain-eresolve.js': {
-    report: (...args) => {
-      EXPLAIN_CALLED.push(args)
-      return 'explanation'
+t.afterEach(() => {
+  EXPLAIN_CALLED = []
+})
+
+const errorMessage = (er, _npm, windows) => {
+  if (typeof windows === 'boolean') {
+    Object.defineProperty(process, 'platform', {
+      value: windows ? 'win32' : 'posix',
+      configurable: true,
+    })
+  }
+  const mocks = {
+    '../../../lib/utils/explain-eresolve.js': {
+      report: (...args) => {
+        EXPLAIN_CALLED.push(args)
+        return 'explanation'
+      },
     },
-  },
-  // XXX ???
-  get '../../../lib/utils/is-windows.js' () {
-    return process.platform === 'win32'
-  },
-}
-let errorMessage = t.mock('../../../lib/utils/error-message.js', { ...mocks })
-
-const beWindows = () => {
-  Object.defineProperty(process, 'platform', {
-    value: 'win32',
-    configurable: true,
-  })
-  errorMessage = t.mock('../../../lib/utils/error-message.js', { ...mocks })
-}
-
-const bePosix = () => {
-  Object.defineProperty(process, 'platform', {
-    value: 'posix',
-    configurable: true,
-  })
-  errorMessage = t.mock('../../../lib/utils/error-message.js', { ...mocks })
+    // XXX ???
+    get '../../../lib/utils/is-windows.js' () {
+      return process.platform === 'win32'
+    },
+    // XXX: this is ugh but it passes in the same mocks from npm to error message
+    // which is important because mock-npm mocks loggers by default
+    // but they are required separately in each file. So the error message
+    // and npm have different refernces to the logs in their mocks. We should find
+    // a way to either globally mock some modules or require modules
+    // in a single place and pass them around internally
+    ...(_npm === npm ? loadedMocks.logMocks : unloadedMocks.logMocks),
+  }
+  return t.mock('../../../lib/utils/error-message.js', mocks)(er, _npm)
 }
 
 t.test('just simple messages', t => {
@@ -207,18 +211,7 @@ t.test('args are cleaned', t => {
 })
 
 t.test('eacces/eperm', t => {
-  t.afterEach(() => {
-    loaded.logs.length = 0
-    unloaded.logs.length = 0
-  })
-
   const runTest = (windows, loaded, cachePath, cacheDest) => t => {
-    if (windows) {
-      beWindows()
-    } else {
-      bePosix()
-    }
-
     const path = `${cachePath ? CACHE : '/not/cache/dir'}/path`
     const dest = `${cacheDest ? CACHE : '/not/cache/dir'}/dest`
     const er = Object.assign(new Error('whoopsie'), {
@@ -228,13 +221,11 @@ t.test('eacces/eperm', t => {
       stack: 'dummy stack trace',
     })
 
-    if (loaded) {
-      t.matchSnapshot(errorMessage(er, npm))
-      t.matchSnapshot(loaded.filteredLogs('verbose'))
-    } else {
-      t.matchSnapshot(errorMessage(er, unloadedNpm))
-      t.matchSnapshot(unloaded.filteredLogs('verbose'))
-    }
+    const npmMocks = (loaded ? loadedMocks : unloadedMocks)
+    const _npm = loaded ? npm : unloadedNpm
+
+    t.matchSnapshot(errorMessage(er, _npm, windows))
+    t.matchSnapshot(npmMocks.filteredLogs('verbose'))
 
     t.end()
   }
@@ -249,6 +240,7 @@ t.test('eacces/eperm', t => {
       }
     }
   }
+
   t.end()
 })
 
@@ -493,7 +485,7 @@ t.test('explain ERESOLVE errors', t => {
   t.matchSnapshot(errorMessage(er, npm))
   t.match(EXPLAIN_CALLED, [[
     er,
-    undefined,
+    false,
     path.resolve(npm.cache, 'eresolve-report.txt'),
   ]])
   t.end()
