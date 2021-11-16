@@ -9,7 +9,7 @@ t.test('with args, dev=true', async t => {
   let REIFY_CALLED = false
   let ARB_OBJ = null
 
-  const { Npm, filteredLogs } = mockNpm(t, {
+  const { Npm, logs } = mockNpm(t, {
     '@npmcli/run-script': ({ event }) => {
       SCRIPTS.push(event)
     },
@@ -41,8 +41,8 @@ t.test('with args, dev=true', async t => {
 
   await npm.exec('install', ['fizzbuzz'])
   t.match(
-    filteredLogs('warn').map(([, m]) => m),
-    ['Usage of the `--dev` option is deprecated. Use `--include=dev` instead.']
+    logs.warn,
+    [['install', 'Usage of the `--dev` option is deprecated. Use `--include=dev` instead.']]
   )
   t.match(
     ARB_ARGS,

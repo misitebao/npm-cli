@@ -23,7 +23,7 @@ t.formatSnapshot = obj =>
 // and make some assertions that should always be true. Sets
 // the results on t.context for use in child tests
 const shrinkwrap = async (t, testdir = {}, config = {}, mocks = {}) => {
-  const { Npm, filteredLogs } = mockNpm(t, mocks)
+  const { Npm, logs } = mockNpm(t, mocks)
   const npm = new Npm()
   await npm.load()
 
@@ -39,17 +39,15 @@ const shrinkwrap = async (t, testdir = {}, config = {}, mocks = {}) => {
 
   const newFile = resolve(npm.localPrefix, 'npm-shrinkwrap.json')
   const oldFile = resolve(npm.localPrefix, 'package-lock.json')
-  const notices = filteredLogs('notice').map(([, m]) => m)
-  const warnings = filteredLogs('warn')
 
   t.notOk(fs.existsSync(oldFile), 'package-lock is always deleted')
-  t.same(warnings, [], 'no warnings')
+  t.same(logs.warn, [], 'no warnings')
   t.teardown(() => delete t.context)
   t.context = {
     localPrefix: testdir,
     config,
     shrinkwrap: JSON.parse(fs.readFileSync(newFile)),
-    logs: notices,
+    logs: logs.notice.map(([, m]) => m),
   }
 }
 

@@ -256,7 +256,7 @@ t.test('eacces/eperm', t => {
     const _npm = loaded ? npm : unloadedNpm
 
     t.matchSnapshot(errorMessage(er, _npm, windows))
-    t.matchSnapshot(npmMocks.filteredLogs('verbose'))
+    t.matchSnapshot(npmMocks.logs.verbose)
 
     t.end()
   }

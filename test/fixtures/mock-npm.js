@@ -1,48 +1,45 @@
 const { title, execPath } = process
+const { promisify } = require('util')
+const rimraf = promisify(require('rimraf'))
 const mockLogs = require('./mock-logs')
 
 // Eventually this should default to having a prefix of an empty testdir, and
 // awaiting npm.load() unless told not to (for npm tests for example).  Ideally
-// the prefix of an empty dir is inferred rather than explicitly set  
-const RealMockNpm = (t, otherMocks = {}, options = {}) => {
+// the prefix of an empty dir is inferred rather than explicitly set
+const RealMockNpm = (t, otherMocks = {}) => {
   let instance = null
-  const mock = {}
-  mock.logs = []
-  mock.outputs = []
-  mock.timers = {}
-  mock.joinedOutput = () => {
-    return mock.outputs.map(o => o.join(' ')).join('\n')
-  }
-  mock.filteredLogs = (filter) => {
-    // Split on first ':' only since prefix can contain ':'
-    const [title, prefix] = typeof filter === 'string' ? filter.split(/:(.+)/) : []
-    const f = typeof filter === 'function'
-      ? filter
-      // Filter on title and optionally prefix
-      : ([t, p]) => t === title && (prefix ? p === prefix : true)
-    return mock.logs
-      .filter(f)
-      // If we filter on the prefix also then just return
-      // the message, otherwise return both
-      // The message can be of arbitrary length
-      // but if theres only one part then unwrap and return that
-      .map(([__, p, ...m]) => prefix ? m.length <= 1 ? m[0] : m : [p, ...m])
+
+  const mockedLogs = mockLogs(otherMocks)
+  const mock = {
+    logMocks: mockedLogs.mocks,
+    logs: mockedLogs.logs,
+    outputs: [],
+    timings: {},
+    unfinished: {},
+    joinedOutput () {
+      return mock.outputs
+        .map(o => o.join(' '))
+        .join('\n')
+    },
   }
 
-  // Merge default mocks for logging with whatever mocks were
-  // passed in.
-  // XXX: this shouldn't be necessary and we should find a way
-  // to mock just logs but for now npmlog methods are mocked
-  // across many of the older tests
-  const logMocks = mockLogs((...args) => mock.logs.push(args), otherMocks)
-  mock.logMocks = logMocks
+  const timeHandler = (name) => {
+    mock.unfinished[name] = Date.now()
+  }
+  const timeEndHandler = (name) => {
+    mock.timings[name] = Date.now() - mock.unfinished[name]
+    delete mock.unfinished[name]
+  }
+
+  process.on('time', timeHandler)
+  process.on('timeEnd', timeEndHandler)
 
   const Npm = t.mock('../../lib/npm.js', {
     ...otherMocks,
-    ...logMocks,
+    ...mock.logMocks,
   })
 
-  class MockNpm extends Npm {
+  mock.Npm = class MockNpm extends Npm {
     constructor () {
       super()
       // npm.js tests need this restored to actually test this function!
@@ -55,11 +52,12 @@ const RealMockNpm = (t, otherMocks = {}, options = {}) => {
     }
   }
 
-  mock.Npm = MockNpm
-
+  // After each child test reset mock data
+  // so a single npm instance can be tested across commands
+  // XXX: make this behavior opt in so tests can accumulate logs
   t.afterEach(() => {
-    mock.outputs.length = 0
     mock.logs.length = 0
+    mock.outputs.length = 0
     mock.timers = {}
   })
 
@@ -68,6 +66,8 @@ const RealMockNpm = (t, otherMocks = {}, options = {}) => {
     process.execPath = execPath
     delete process.env.npm_command
     delete process.env.COLOR
+    process.off('time', timeHandler)
+    process.off('timeEnd', timeEndHandler)
     if (instance) {
       instance.unload()
       instance = null
@@ -93,6 +93,9 @@ const LoadMockNpm = async (t, options = {}) => {
   for (const [k, v] of Object.entries(config)) {
     npm.config.set(k, v)
   }
+  t.teardown(async () => {
+    await rimraf(dir)
+  })
   return {
     npm,
     ...rest,

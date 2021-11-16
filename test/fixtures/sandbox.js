@@ -44,7 +44,7 @@ const _output = Symbol('sandbox.output')
 const _proxy = Symbol('sandbox.proxy')
 const _get = Symbol('sandbox.proxy.get')
 const _set = Symbol('sandbox.proxy.set')
-const _log = Symbol('sandbox._log')
+const _logs = Symbol('sandbox.logs')
 
 // these config keys can be redacted widely
 const redactedDefaults = [
@@ -99,7 +99,7 @@ class Sandbox extends EventEmitter {
   }
 
   get logs () {
-    return this[_proxy]._logs
+    return this[_logs]
   }
 
   get global () {
@@ -243,12 +243,6 @@ class Sandbox extends EventEmitter {
     return this[_data].set(prop, value)
   }
 
-  [_log] = (level, ...args) => {
-    this[_proxy]._logs = this[_proxy]._logs || {}
-    this[_proxy]._logs[level] = this[_proxy]._logs[level] || []
-    this[_proxy]._logs[level].push(args)
-  }
-
   async run (command, argv = []) {
     await Promise.all([
       mkdirp(this.project),
@@ -273,10 +267,11 @@ class Sandbox extends EventEmitter {
       ...argv,
     ]
 
-    const logMocks = mockLogs(this[_log])
+    const mockedLogs = mockLogs(this[_mocks])
+    this[_logs] = mockedLogs.logs
     const Npm = this[_test].mock('../../lib/npm.js', {
       ...this[_mocks],
-      ...logMocks,
+      ...mockedLogs.mocks,
     })
     this[_npm] = new Npm()
     this[_npm].output = (...args) => this[_output].push(args)
@@ -323,10 +318,11 @@ class Sandbox extends EventEmitter {
       ...argv,
     ]
 
-    const logMocks = mockLogs(this[_log])
+    const mockedLogs = mockLogs(this[_mocks])
+    this[_logs] = mockedLogs.logs
     const Npm = this[_test].mock('../../lib/npm.js', {
       ...this[_mocks],
-      ...logMocks,
+      ...mockedLogs.mocks,
     })
     this[_npm] = new Npm()
     this[_npm].output = (...args) => this[_output].push(args)

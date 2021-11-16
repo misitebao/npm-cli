@@ -1,6 +1,7 @@
 const t = require('tap')
 
-t.cleanSnapshot = str => str.replace(/published .*? ago/g, 'published {TIME} ago')
+t.cleanSnapshot = str => str
+  .replace(/(published ).*?( ago)/g, '$1{TIME}$2')
 
 // run the same as tap does when running directly with node
 process.stdout.columns = undefined
@@ -17,8 +18,8 @@ const cleanLogs = () => {
   console.log = fn
 }
 
-// 25 hours ago
-const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 25)
+// 3 days. its never yesterday and never a week ago
+const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24 * 3)
 
 const packument = (nv, opts) => {
   if (!opts.fullMetadata) {
