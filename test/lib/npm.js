@@ -469,7 +469,7 @@ t.test('debug-log', async t => {
   await npm.load()
   process.emit('log', ...log2)
 
-  const [debug] = await Promise.all(npm.logFiles.map((f) => fs.readFile(f, 'utf-8')))
+  const [debug] = await Promise.all(npm.logFiles.map((f) => fs.readFile(f, 'utf8')))
   t.equal(npm.logFiles.length, 1, 'one debug file')
   t.match(debug, log1.join(' '), 'before load appears')
   t.match(debug, log2.join(' '), 'after load log appears')
@@ -509,7 +509,7 @@ t.test('timings', async t => {
     process.emit('timeEnd', 'foo')
     npm.config.set('timing', true)
     npm.unload()
-    const timings = JSON.parse(await fs.readFile(resolve(npm.cache, '_timing.json'), 'utf-8'))
+    const timings = JSON.parse(await fs.readFile(resolve(npm.cache, '_timing.json'), 'utf8'))
     t.match(timings, {
       command: [],
       logfile: String,
@@ -527,7 +527,7 @@ t.test('timings', async t => {
     await npm.load()
     npm.config.set('timing', false)
     npm.unload()
-    await t.rejects(() => fs.readFile(resolve(npm.cache, '_timing.json'), 'utf-8'))
+    await t.rejects(() => fs.readFile(resolve(npm.cache, '_timing.json'), 'utf8'))
   })
 })
 

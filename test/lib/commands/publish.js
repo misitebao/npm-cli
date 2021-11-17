@@ -623,7 +623,7 @@ t.test('workspaces', t => {
   t.end()
 })
 
-t.only('private workspaces', async t => {
+t.test('private workspaces', async t => {
   const testDir = t.testdir({
     'package.json': JSON.stringify({
       name: 'workspaces-project',

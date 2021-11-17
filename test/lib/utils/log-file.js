@@ -10,7 +10,7 @@ const last = arr => arr[arr.length - 1]
 const readLogs = async (dir) => {
   const logDir = await fs.readdir(dir)
   return Promise.all(logDir.map(async (f) => {
-    const logs = await fs.readFile(path.join(dir, f), 'utf-8')
+    const logs = await fs.readFile(path.join(dir, f), 'utf8')
     const rawLogs = logs.split(os.EOL)
     return {
       filename: f,
