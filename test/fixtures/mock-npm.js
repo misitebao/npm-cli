@@ -1,11 +1,10 @@
 const { title, execPath } = process
-const { promisify } = require('util')
-const rimraf = promisify(require('rimraf'))
+const os = require('os')
+const fs = require('fs').promises
+const path = require('path')
 const mockLogs = require('./mock-logs')
+const log = require('../../lib/utils/log-shim')
 
-// Eventually this should default to having a prefix of an empty testdir, and
-// awaiting npm.load() unless told not to (for npm tests for example).  Ideally
-// the prefix of an empty dir is inferred rather than explicitly set
 const RealMockNpm = (t, otherMocks = {}) => {
   let instance = null
 
@@ -14,25 +13,20 @@ const RealMockNpm = (t, otherMocks = {}) => {
     logMocks: mockedLogs.mocks,
     logs: mockedLogs.logs,
     outputs: [],
-    timings: {},
-    unfinished: {},
     joinedOutput () {
       return mock.outputs
         .map(o => o.join(' '))
         .join('\n')
     },
+    timers: {
+      get unfinished () {
+        return instance.unfinishedTimers
+      },
+      get finished () {
+        return instance.finishedTimers
+      },
+    },
   }
-
-  const timeHandler = (name) => {
-    mock.unfinished[name] = Date.now()
-  }
-  const timeEndHandler = (name) => {
-    mock.timings[name] = Date.now() - mock.unfinished[name]
-    delete mock.unfinished[name]
-  }
-
-  process.on('time', timeHandler)
-  process.on('timeEnd', timeEndHandler)
 
   const Npm = t.mock('../../lib/npm.js', {
     ...otherMocks,
@@ -52,13 +46,11 @@ const RealMockNpm = (t, otherMocks = {}) => {
     }
   }
 
-  // After each child test reset mock data
-  // so a single npm instance can be tested across commands
-  // XXX: make this behavior opt in so tests can accumulate logs
+  // After each child test reset mock data so a single
+  // npm instance can be tested across multiple child tests
   t.afterEach(() => {
     mock.logs.length = 0
     mock.outputs.length = 0
-    mock.timers = {}
   })
 
   t.teardown(() => {
@@ -66,8 +58,6 @@ const RealMockNpm = (t, otherMocks = {}) => {
     process.execPath = execPath
     delete process.env.npm_command
     delete process.env.COLOR
-    process.off('time', timeHandler)
-    process.off('timeEnd', timeEndHandler)
     if (instance) {
       instance.unload()
       instance = null
@@ -77,28 +67,73 @@ const RealMockNpm = (t, otherMocks = {}) => {
   return mock
 }
 
-const LoadMockNpm = async (t, options = {}) => {
-  const {
-    mocks = {},
-    testdir = {},
-    config = {},
-  } = options
-  const dir = t.testdir(testdir)
-  const { Npm, ...rest } = RealMockNpm(t, mocks)
-  const npm = new Npm()
-  process.env.npm_config_cache = dir
-  await npm.load()
-  npm.prefix = dir
-  npm.cache = dir
-  for (const [k, v] of Object.entries(config)) {
-    npm.config.set(k, v)
-  }
-  t.teardown(async () => {
-    await rimraf(dir)
+const withEnvDir = (t, key, dir) => {
+  const { env: { [key]: _value } } = process
+
+  process.env[key] = typeof dir === 'string'
+    ? dir
+    : t.testdir(dir)
+
+  t.teardown(() => {
+    process.env[_value] = _value
   })
+
+  return process.env[key]
+}
+
+const LoadMockNpm = async (t, {
+  init = true,
+  load = true,
+  testdir = {},
+  config = {},
+  mocks = {},
+} = {}) => {
+  const { Npm, ...rest } = RealMockNpm(t, mocks)
+
+  const npm = init ? new Npm() : null
+  const shouldLoad = npm && load
+
+  const dir = t.testdir({ prefix: testdir, cache: {} })
+  const prefix = withEnvDir(t, 'npm_config_prefix', path.join(dir, 'prefix'))
+  const cache = withEnvDir(t, 'npm_config_cache', path.join(dir, 'cache'))
+  withEnvDir(t, 'PREFIX', prefix)
+
+  if (shouldLoad) {
+    await npm.load()
+    if (prefix) {
+      npm.prefix = prefix
+    }
+  }
+
+  const { loglevel, ...restConfig } = config
+  if (shouldLoad) {
+    for (const [k, v] of Object.entries(restConfig)) {
+      npm.config.set(k, v)
+    }
+    if (loglevel) {
+      // Log level is set on log singleton for now
+      // XXX: remove with npmlog
+      log.level = loglevel
+      npm.config.set('loglevel', loglevel)
+    }
+  }
+
   return {
-    npm,
     ...rest,
+    npm,
+    prefix,
+    cache,
+    debugFile: async () => {
+      const logFiles = await Promise.all(npm.logFiles.map(f => fs.readFile(f)))
+      return logFiles
+        .flatMap((d) => d.toString().trim().split(os.EOL))
+        .filter(Boolean)
+        .join('\n')
+    },
+    timingFile: async () => {
+      const data = await fs.readFile(path.resolve(cache, '_timing.json'), 'utf8')
+      return JSON.parse(data) // XXX: this files if multiple timings are written
+    },
   }
 }
 
@@ -148,4 +183,5 @@ module.exports = {
   fake: FakeMockNpm,
   real: RealMockNpm,
   load: LoadMockNpm,
+  withEnvDir,
 }

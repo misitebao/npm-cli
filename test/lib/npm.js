@@ -2,7 +2,7 @@ const t = require('tap')
 const fs = require('fs').promises
 const { resolve, dirname } = require('path')
 
-const { real: mockNpm } = require('../fixtures/mock-npm.js')
+const { real: mockNpm, withEnvDir } = require('../fixtures/mock-npm.js')
 
 // delete this so that we don't have configs from the fact that it
 // is being run by 'npm test'
@@ -26,7 +26,7 @@ for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
   delete process.env[env]
 }
 
-let CACHE = null
+let CACHE
 const actualPlatform = process.platform
 const argv = [...process.argv]
 
@@ -44,8 +44,7 @@ const bePosix = () => {
 }
 
 t.beforeEach((t) => {
-  CACHE = t.testdir()
-  process.env.npm_config_cache = CACHE
+  CACHE = withEnvDir(t, 'npm_config_cache')
 })
 
 t.afterEach(async (t) => {
@@ -478,7 +477,7 @@ t.test('debug-log', async t => {
 
 t.test('timings', async t => {
   t.test('gets/sets timers', t => {
-    const { Npm, logs, timers } = mockNpm(t)
+    const { Npm, logs } = mockNpm(t)
     const npm = new Npm()
     process.emit('time', 'foo')
     process.emit('time', 'bar')

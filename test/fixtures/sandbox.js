@@ -10,9 +10,6 @@ const mockLogs = require('./mock-logs')
 const chain = new Map()
 const sandboxes = new Map()
 
-// Disable lint errors for assigning to process global
-/* global process:writable */
-
 // keep a reference to the real process
 const _process = process
 
@@ -80,6 +77,7 @@ class Sandbox extends EventEmitter {
       global: options.global || join(tempDir, 'global'),
       home: options.home || join(tempDir, 'home'),
       project: options.project || join(tempDir, 'project'),
+      cache: options.cache || join(tempDir, 'cache'),
     }
 
     this[_proxy] = new Proxy(_process, {
@@ -112,6 +110,10 @@ class Sandbox extends EventEmitter {
 
   get project () {
     return this[_dirs].project
+  }
+
+  get cache () {
+    return this[_dirs].cache
   }
 
   get process () {
@@ -193,7 +195,9 @@ class Sandbox extends EventEmitter {
     if (this[_parent]) {
       sandboxes.delete(this[_parent])
     }
-    this[_npm].unload()
+    if (this[_npm]) {
+      this[_npm].unload()
+    }
     return rimraf(this[_dirs].temp).catch(() => null)
   }
 
@@ -263,6 +267,7 @@ class Sandbox extends EventEmitter {
       '--prefix', this.project,
       '--userconfig', join(this.home, '.npmrc'),
       '--globalconfig', join(this.global, 'npmrc'),
+      '--cache', this.cache,
       command,
       ...argv,
     ]
@@ -314,6 +319,7 @@ class Sandbox extends EventEmitter {
       '--prefix', this.project,
       '--userconfig', join(this.home, '.npmrc'),
       '--globalconfig', join(this.global, 'npmrc'),
+      '--cache', this.cache,
       command,
       ...argv,
     ]

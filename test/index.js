@@ -7,10 +7,11 @@ t.throws(() => require(index), {
 })
 
 t.test('loading as main module will load the cli', t => {
+  const cwd = t.testdir()
   const { spawn } = require('child_process')
   const LS = require('../lib/commands/ls.js')
   const ls = new LS({})
-  const p = spawn(process.execPath, [index, 'ls', '-h'])
+  const p = spawn(process.execPath, [index, 'ls', '-h', '--cache', cwd])
   const out = []
   p.stdout.on('data', c => out.push(c))
   p.on('close', (code, signal) => {

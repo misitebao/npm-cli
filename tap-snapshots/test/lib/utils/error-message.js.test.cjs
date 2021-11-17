@@ -394,7 +394,7 @@ Object {
       "",
       Error: whoopsie {
         "code": "EACCES",
-        "dest": "/some/cache/dir/dest",
+        "dest": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-false-cachePath-false-cacheDest-true-/cache/dest",
         "path": "/not/cache/dir/path",
       },
     ],
@@ -428,7 +428,7 @@ Object {
       Error: whoopsie {
         "code": "EACCES",
         "dest": "/not/cache/dir/dest",
-        "path": "/some/cache/dir/path",
+        "path": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-false-cachePath-true-cacheDest-false-/cache/path",
       },
     ],
   ],
@@ -460,8 +460,8 @@ Object {
       "",
       Error: whoopsie {
         "code": "EACCES",
-        "dest": "/some/cache/dir/dest",
-        "path": "/some/cache/dir/path",
+        "dest": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-false-cachePath-true-cacheDest-true-/cache/dest",
+        "path": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-false-cachePath-true-cacheDest-true-/cache/path",
       },
     ],
   ],
@@ -517,7 +517,7 @@ Object {
         previous versions of npm which has since been addressed.
         
         To permanently fix this problem, please run:
-          sudo chown -R 867:5309 "/some/cache/dir"
+          sudo chown -R 867:5309 "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-true-cachePath-false-cacheDest-true-/cache"
       ),
     ],
   ],
@@ -544,7 +544,7 @@ Object {
         previous versions of npm which has since been addressed.
         
         To permanently fix this problem, please run:
-          sudo chown -R 867:5309 "/some/cache/dir"
+          sudo chown -R 867:5309 "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-true-cachePath-true-cacheDest-false-/cache"
       ),
     ],
   ],
@@ -571,7 +571,7 @@ Object {
         previous versions of npm which has since been addressed.
         
         To permanently fix this problem, please run:
-          sudo chown -R 867:5309 "/some/cache/dir"
+          sudo chown -R 867:5309 "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-true-cachePath-true-cacheDest-true-/cache"
       ),
     ],
   ],
@@ -642,7 +642,7 @@ Object {
       "",
       Error: whoopsie {
         "code": "EACCES",
-        "dest": "/some/cache/dir/dest",
+        "dest": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-false-cachePath-false-cacheDest-true-/cache/dest",
         "path": "/not/cache/dir/path",
       },
     ],
@@ -677,7 +677,7 @@ Object {
       Error: whoopsie {
         "code": "EACCES",
         "dest": "/not/cache/dir/dest",
-        "path": "/some/cache/dir/path",
+        "path": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-false-cachePath-true-cacheDest-false-/cache/path",
       },
     ],
   ],
@@ -710,8 +710,8 @@ Object {
       "",
       Error: whoopsie {
         "code": "EACCES",
-        "dest": "/some/cache/dir/dest",
-        "path": "/some/cache/dir/path",
+        "dest": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-false-cachePath-true-cacheDest-true-/cache/dest",
+        "path": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-false-cachePath-true-cacheDest-true-/cache/path",
       },
     ],
   ],
@@ -778,7 +778,7 @@ Object {
       "",
       Error: whoopsie {
         "code": "EACCES",
-        "dest": "/some/cache/dir/dest",
+        "dest": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-true-cachePath-false-cacheDest-true-/cache/dest",
         "path": "/not/cache/dir/path",
       },
     ],
@@ -813,7 +813,7 @@ Object {
       Error: whoopsie {
         "code": "EACCES",
         "dest": "/not/cache/dir/dest",
-        "path": "/some/cache/dir/path",
+        "path": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-true-cachePath-true-cacheDest-false-/cache/path",
       },
     ],
   ],
@@ -846,8 +846,8 @@ Object {
       "",
       Error: whoopsie {
         "code": "EACCES",
-        "dest": "/some/cache/dir/dest",
-        "path": "/some/cache/dir/path",
+        "dest": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-true-cachePath-true-cacheDest-true-/cache/dest",
+        "path": "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-true-cachePath-true-cacheDest-true-/cache/path",
       },
     ],
   ],

@@ -30,7 +30,7 @@ t.test('stuff', async t => {
 
   logFile.log('error', 'buffered')
 
-  logFile.config({
+  logFile.load({
     dir: root,
     maxFiles: 100,
   })

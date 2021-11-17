@@ -6,15 +6,19 @@ const completionScript = fs
   .readFileSync(path.resolve(__dirname, '../../../lib/utils/completion.sh'), { encoding: 'utf8' })
   .replace(/^#!.*?\n/, '')
 
-const { real: mockNpm } = require('../../fixtures/mock-npm')
+const { load: _loadMockNpm } = require('../../fixtures/mock-npm')
 
-const { Npm, outputs } = mockNpm(t, {
-  '../../lib/utils/is-windows-shell.js': false,
+const loadMockNpm = (t, mocks) => _loadMockNpm(t, {
+  mocks: {
+    '../../lib/utils/is-windows-shell.js': false,
+    ...mocks,
+  },
 })
-const npm = new Npm()
 
 t.test('completion', async t => {
+  const { npm, outputs } = await loadMockNpm(t)
   const completion = await npm.cmd('completion')
+
   t.test('completion completion', async t => {
     const home = process.env.HOME
     t.teardown(() => {
@@ -260,10 +264,9 @@ t.test('completion', async t => {
 })
 
 t.test('windows without bash', async t => {
-  const { Npm, outputs } = mockNpm(t, {
+  const { npm, outputs } = await loadMockNpm(t, {
     '../../lib/utils/is-windows-shell.js': true,
   })
-  const npm = new Npm()
   const completion = await npm.cmd('completion')
   await t.rejects(
     completion.exec({}),
