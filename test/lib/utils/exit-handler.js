@@ -34,6 +34,9 @@ t.test('bootstrap tap before cutting off process ref', (t) => {
 // Keep track of things to teardown globally
 const teardown = []
 
+const _level = log.level
+teardown.push(() => log.level = _level)
+
 // cut off process from script so that it won't quit the test runner
 // while trying to call process.exit. This also needs to be done
 // before mocking any npm internals since those emit events
@@ -73,21 +76,16 @@ t.teardown(() => {
   teardown.forEach((fn) => fn())
 })
 
-const mockExitHandler = async (t, {
-  testdir = {},
-  init = true,
-  load = true,
-  config = {},
-} = {}) => {
+const mockExitHandler = async (t, { init, load, testdir, config } = {}) => {
   // override for console errors in log handler
   const errors = []
   const _consoleError = console.error
   console.error = (err) => errors.push(err)
 
   const { npm, logMocks, ...rest } = await loadMockNpm(t, {
-    testdir,
     init,
     load,
+    testdir,
     mocks: {
       '../../package.json': {
         version: '1.0.0',
@@ -114,7 +112,6 @@ const mockExitHandler = async (t, {
 
   t.teardown((t) => {
     console.error = _consoleError
-    log.level = 'silent'
     delete process.exitCode
     process.removeAllListeners('exit')
   })
@@ -282,25 +279,24 @@ t.test('npm.config not ready', async (t) => {
 })
 
 t.test('timing with no error', async (t) => {
-  const { exitHandler, timingFile, timers } = await mockExitHandler(t, {
+  const { exitHandler, timingFile, npm } = await mockExitHandler(t, {
     config: {
       timing: true,
     },
   })
 
   await exitHandler()
-
   const timingFileData = await timingFile()
 
   t.equal(process.exitCode, 0)
   t.match(
     timingFileData,
-    Object.keys(timers.finished).reduce((acc, k) => {
+    Object.keys(npm.finishedTimers).reduce((acc, k) => {
       acc[k] = Number
       return acc
     }, {})
   )
-  t.strictSame(timers.unfinished, new Map())
+  t.strictSame(npm.unfinishedTimers, new Map())
   t.match(timingFileData, {
     command: [],
     version: '1.0.0',

@@ -1,8 +1,7 @@
 const t = require('tap')
-const fs = require('fs').promises
 const { resolve, dirname } = require('path')
 
-const { real: mockNpm, withEnvDir } = require('../fixtures/mock-npm.js')
+const { real: mockNpm, load: loadMockNpm, withEnvDir } = require('../fixtures/mock-npm.js')
 
 // delete this so that we don't have configs from the fact that it
 // is being run by 'npm test'
@@ -459,8 +458,7 @@ t.test('set process.title', async t => {
 })
 
 t.test('debug-log', async t => {
-  const { Npm } = mockNpm(t)
-  const npm = new Npm()
+  const { npm, debugFile } = await loadMockNpm(t, { load: false })
 
   const log1 = ['silly', 'test', 'before load']
   const log2 = ['silly', 'test', 'after load']
@@ -469,7 +467,7 @@ t.test('debug-log', async t => {
   await npm.load()
   process.emit('log', ...log2)
 
-  const [debug] = await Promise.all(npm.logFiles.map((f) => fs.readFile(f, 'utf8')))
+  const debug = await debugFile()
   t.equal(npm.logFiles.length, 1, 'one debug file')
   t.match(debug, log1.join(' '), 'before load appears')
   t.match(debug, log2.join(' '), 'after load log appears')
@@ -486,9 +484,12 @@ t.test('timings', async t => {
     process.emit('timeEnd', 'foo')
     process.emit('timeEnd', 'bar')
     process.emit('timeEnd', 'baz')
+    // npm timer is started by default
+    process.emit('timeEnd', 'npm')
     t.match(logs.timing, [
       ['foo', /Completed in [0-9]+ms/],
       ['bar', /Completed in [0-9]+ms/],
+      ['npm', /Completed in [0-9]+ms/],
     ])
     t.match(logs.silly, [[
       'timing',
@@ -497,52 +498,52 @@ t.test('timings', async t => {
     ]])
     t.notOk(npm.unfinishedTimers.has('foo'), 'foo timer is gone')
     t.notOk(npm.unfinishedTimers.has('bar'), 'bar timer is gone')
-    t.match(npm.finishedTimers, { foo: Number, bar: Number })
+    t.match(npm.finishedTimers, { foo: Number, bar: Number, npm: Number })
     t.end()
   })
 
-  t.test('writes timers', async t => {
-    const { Npm } = mockNpm(t)
-    const npm = new Npm()
-    await npm.load()
+  t.test('writes timings file', async t => {
+    const { npm, timingFile } = await loadMockNpm(t, {
+      config: { timing: true },
+    })
     process.emit('time', 'foo')
     process.emit('timeEnd', 'foo')
-    npm.config.set('timing', true)
+    process.emit('time', 'bar')
     npm.unload()
-    const timings = JSON.parse(await fs.readFile(resolve(npm.cache, '_timing.json'), 'utf8'))
+    const timings = await timingFile()
     t.match(timings, {
       command: [],
       logfile: String,
       logfiles: [String],
       version: String,
-      unfinished: {},
+      unfinished: {
+        bar: [Number, Number],
+        npm: [Number, Number],
+      },
       foo: Number,
       'npm:load': Number,
     })
   })
 
-  t.test('does not write when timers false', async t => {
-    const { Npm } = mockNpm(t)
-    const npm = new Npm()
-    await npm.load()
-    npm.config.set('timing', false)
+  t.test('does not write timings file with timers:false', async t => {
+    const { npm, timingFile } = await loadMockNpm(t, {
+      config: { false: true },
+    })
     npm.unload()
-    await t.rejects(() => fs.readFile(resolve(npm.cache, '_timing.json'), 'utf8'))
+    await t.rejects(() => timingFile())
   })
 })
 
 t.test('output clears progress and console.logs the message', t => {
   t.plan(2)
   let showingProgress = true
-  const mock = mockNpm(t, {
+  const { Npm, logs } = mockNpm(t, {
     npmlog: {
       clearProgress: () => showingProgress = false,
       showProgress: () => showingProgress = true,
     },
   })
-  const { Npm, logs } = mock
   const npm = new Npm()
-  npm.output = mock.npmOutput
   const { log } = console
   console.log = (...args) => {
     t.equal(showingProgress, false, 'should not be showing progress right now')
@@ -551,7 +552,7 @@ t.test('output clears progress and console.logs the message', t => {
   t.teardown(() => {
     console.log = log
   })
-  npm.output('hello')
+  npm.originalOutput('hello')
   t.match(logs, [['hello']])
   t.end()
 })

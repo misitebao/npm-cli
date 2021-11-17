@@ -7,7 +7,9 @@ const log = require('../../../lib/utils/log-shim')
 // it from these tests, which only interact with lib/publish.js, which assumes
 // that the code that is requiring and calling lib/publish.js has already
 // taken care of the loglevel
-log.level = 'silent'
+const _level = log.level
+t.beforeEach(() => (log.level = 'silent'))
+t.teardown(() => (log.level = _level))
 
 t.cleanSnapshot = data => {
   return data.replace(/^ *"gitHead": .*$\n/gm, '')
@@ -18,8 +20,6 @@ const defaults = Object.entries(definitions).reduce((defaults, [key, def]) => {
   defaults[key] = def.default
   return defaults
 }, {})
-
-t.afterEach(() => (log.level = 'silent'))
 
 t.test(
   /* eslint-disable-next-line max-len */
@@ -188,7 +188,6 @@ t.test(
       ),
     })
 
-    log.level = 'silent'
     const Publish = t.mock('../../../lib/commands/publish.js', {
       '../../../lib/utils/tar.js': {
         getContents: () => ({

@@ -102,6 +102,7 @@ t.test('report endpoint error', async t => {
       json: false,
     },
   })
+
   t.test('json=false', async t => {
     await t.rejects(npm.exec('audit', []), 'audit endpoint returned an error')
     t.match(logs.warn, [['audit', 'hello, this didnt work']])

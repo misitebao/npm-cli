@@ -6,6 +6,9 @@ const mockLogs = require('./mock-logs')
 const log = require('../../lib/utils/log-shim')
 
 const RealMockNpm = (t, otherMocks = {}) => {
+  // Track if this test created something with its
+  // constructor so we can all teardown methods
+  // since those are handled in the exit handler
   let instance = null
 
   const mockedLogs = mockLogs(otherMocks)
@@ -13,19 +16,9 @@ const RealMockNpm = (t, otherMocks = {}) => {
     logMocks: mockedLogs.mocks,
     logs: mockedLogs.logs,
     outputs: [],
-    joinedOutput () {
-      return mock.outputs
-        .map(o => o.join(' '))
-        .join('\n')
-    },
-    timers: {
-      get unfinished () {
-        return instance.unfinishedTimers
-      },
-      get finished () {
-        return instance.finishedTimers
-      },
-    },
+    joinedOutput: () => mock.outputs.map(o => o.join(' ')).join('\n'),
+    unfinishedTimers: () => instance && instance.unfinishedTimers,
+    finishedTimers: () => instance && instance.finishedTimers,
   }
 
   const Npm = t.mock('../../lib/npm.js', {
@@ -36,13 +29,16 @@ const RealMockNpm = (t, otherMocks = {}) => {
   mock.Npm = class MockNpm extends Npm {
     constructor () {
       super()
-      // npm.js tests need this restored to actually test this function!
-      mock.npmOutput = this.output
-      this.output = (...msg) => mock.outputs.push(msg)
-      // Track if this test created something with its
-      // constructor so we can all teardown methods
-      // since those are handled in the exit handler
       instance = this
+    }
+
+    // npm.js tests need this restored to actually test this function!
+    originalOutput (...args) {
+      super.output(...args)
+    }
+
+    output (...args) {
+      mock.outputs.push(args)
     }
   }
 
@@ -51,6 +47,9 @@ const RealMockNpm = (t, otherMocks = {}) => {
   t.afterEach(() => {
     mock.logs.length = 0
     mock.outputs.length = 0
+    if (instance) {
+      instance.reset()
+    }
   })
 
   t.teardown(() => {
@@ -83,39 +82,64 @@ const withEnvDir = (t, key, dir) => {
 
 const LoadMockNpm = async (t, {
   init = true,
-  load = true,
+  load = init,
   testdir = {},
   config = {},
   mocks = {},
 } = {}) => {
   const { Npm, ...rest } = RealMockNpm(t, mocks)
 
+  if (!init && load) {
+    throw new Error('cant `load` without `init`')
+  }
+
+  const _level = log.level
+  t.teardown(() => {
+    log.level = _level
+  })
+
+  if (config.loglevel) {
+    // Set Log level as early as possible since it is set
+    // on the npmlog singleton and shared across everything
+    log.level = config.loglevel
+  }
+
   const npm = init ? new Npm() : null
   const shouldLoad = npm && load
 
   const dir = t.testdir({ prefix: testdir, cache: {} })
+
+  // Set env vars to testdirs so they are available when load is run
+  // XXX: remove this for a less magic solution in the future
   const prefix = withEnvDir(t, 'npm_config_prefix', path.join(dir, 'prefix'))
   const cache = withEnvDir(t, 'npm_config_cache', path.join(dir, 'cache'))
   withEnvDir(t, 'PREFIX', prefix)
 
-  if (shouldLoad) {
-    await npm.load()
-    if (prefix) {
-      npm.prefix = prefix
+  if (npm) {
+    // When this instance gets loaded the first time set the prefix
+    // to match the env var and set and configs passed in
+    const _load = npm.load
+    let initialLoad = true
+    npm.load = async (...args) => {
+      await _load.apply(npm, ...args)
+      if (initialLoad) {
+        // XXX: not sure why this is needed but tests broke without it
+        npm.prefix = prefix
+        for (const [k, v] of Object.entries(config)) {
+          npm.config.set(k, v)
+        }
+        if (config.loglevel) {
+        // Set global loglevel *again* since it possibly got reset during load
+        // XXX: remove with npmlog
+          log.level = config.loglevel
+        }
+        initialLoad = false
+      }
     }
   }
 
-  const { loglevel, ...restConfig } = config
   if (shouldLoad) {
-    for (const [k, v] of Object.entries(restConfig)) {
-      npm.config.set(k, v)
-    }
-    if (loglevel) {
-      // Log level is set on log singleton for now
-      // XXX: remove with npmlog
-      log.level = loglevel
-      npm.config.set('loglevel', loglevel)
-    }
+    await npm.load()
   }
 
   return {
@@ -133,7 +157,7 @@ const LoadMockNpm = async (t, {
     },
     timingFile: async () => {
       const data = await fs.readFile(path.resolve(cache, '_timing.json'), 'utf8')
-      return JSON.parse(data) // XXX: this files if multiple timings are written
+      return JSON.parse(data) // XXX: this fails if multiple timings are written
     },
   }
 }

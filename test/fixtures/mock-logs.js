@@ -1,5 +1,5 @@
 
-const npmlog = require('npmlog')
+const NPMLOG = require('npmlog')
 const { LEVELS } = require('proc-log')
 
 const mockLogs = (mocks = {}) => {
@@ -25,7 +25,7 @@ const mockLogs = (mocks = {}) => {
         LEVELS,
         ...LEVELS.reduce((acc, l) => {
           acc[l] = (...args) => {
-          // Re-emit log item for debug file testing
+            // Re-emit log item for debug file testing
             process.emit('log', l, ...args)
             // Dont add pause/resume events to the logs. Those aren't displayed
             // and emitting them is tested in the display layer
@@ -42,10 +42,10 @@ const mockLogs = (mocks = {}) => {
       // so tests can still directly set `log.level = 'silent'`
       // and have that reflected in the npmlog singleton.
       // XXX: remove with npmlog
-      npmlog: Object.assign(npmlog, {
+      npmlog: Object.assign(NPMLOG, {
       // no-op all npmlog methods by default so tests
       // dont output anything to the terminal
-        ...Object.keys(npmlog.levels).reduce((acc, k) => {
+        ...Object.keys(NPMLOG.levels).reduce((acc, k) => {
           acc[k] = () => {}
           return acc
         }, {}),
