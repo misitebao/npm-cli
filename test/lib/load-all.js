@@ -13,7 +13,7 @@ if (!full) {
     const { npm, dir } = await loadMockNpm(t, { })
 
     t.teardown(() => {
-      // Manually teardown npm dir since exit handler
+      // Manually teardown mock npm dir since exit handler
       // will exit before tap can tear it down
       rimraf.sync(dir)
       const exitHandler = require('../../lib/utils/exit-handler.js')
