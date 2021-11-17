@@ -1,5 +1,6 @@
 const t = require('tap')
 const glob = require('glob')
+const rimraf = require('rimraf')
 const { resolve } = require('path')
 const { load: loadMockNpm } = require('../fixtures/mock-npm')
 
@@ -9,9 +10,12 @@ if (!full) {
   t.pass('nothing to do here, not checking for full coverage')
 } else {
   t.test('load all', async (t) => {
-    const { npm } = await loadMockNpm(t)
+    const { npm, dir } = await loadMockNpm(t, { })
 
     t.teardown(() => {
+      // Manually teardown npm dir since exit handler
+      // will exit before tap can tear it down
+      rimraf.sync(dir)
       const exitHandler = require('../../lib/utils/exit-handler.js')
       exitHandler.setNpm(npm)
       exitHandler()

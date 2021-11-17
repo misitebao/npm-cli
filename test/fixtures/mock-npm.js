@@ -123,6 +123,7 @@ const LoadMockNpm = async (t, {
     npm,
     prefix,
     cache,
+    dir,
     debugFile: async () => {
       const logFiles = await Promise.all(npm.logFiles.map(f => fs.readFile(f)))
       return logFiles
