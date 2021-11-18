@@ -110,7 +110,7 @@ t.test('invalid packument', async t => {
 })
 
 t.test('workspaces', async t => {
-  const { npm, outputs } = await loadMockNpm(t, {
+  const loadWorkspaces = (t) => loadMockNpm(t, {
     testdir: {
       'package.json': JSON.stringify(
         {
@@ -134,27 +134,34 @@ t.test('workspaces', async t => {
         }),
       },
     },
+    config: {
+      workspaces: true,
+    },
   })
-  npm.config.set('workspaces', true)
+
   t.test('all workspaces', async t => {
+    const { npm, outputs } = await loadWorkspaces(t)
     process.chdir(npm.prefix)
     await npm.exec('pack', [])
     t.strictSame(outputs, [['workspace-a-1.0.0.tgz'], ['workspace-b-1.0.0.tgz']])
   })
 
   t.test('all workspaces, `.` first arg', async t => {
+    const { npm, outputs } = await loadWorkspaces(t)
     process.chdir(npm.prefix)
     await npm.exec('pack', ['.'])
     t.strictSame(outputs, [['workspace-a-1.0.0.tgz'], ['workspace-b-1.0.0.tgz']])
   })
 
   t.test('one workspace', async t => {
+    const { npm, outputs } = await loadWorkspaces(t)
     process.chdir(npm.prefix)
     await npm.exec('pack', ['workspace-a'])
     t.strictSame(outputs, [['workspace-a-1.0.0.tgz']])
   })
 
   t.test('specific package', async t => {
+    const { npm, outputs } = await loadWorkspaces(t)
     process.chdir(npm.prefix)
     await npm.exec('pack', [npm.prefix])
     t.strictSame(outputs, [['workspaces-test-1.0.0.tgz']])

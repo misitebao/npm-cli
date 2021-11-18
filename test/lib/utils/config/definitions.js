@@ -1,5 +1,4 @@
 const t = require('tap')
-
 const { resolve } = require('path')
 
 // have to fake the node version, or else it'll only pass on this one

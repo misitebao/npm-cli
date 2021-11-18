@@ -6,9 +6,14 @@ const { real: mockNpm, load: loadMockNpm, withEnvDir } = require('../fixtures/mo
 // delete this so that we don't have configs from the fact that it
 // is being run by 'npm test'
 const event = process.env.npm_lifecycle_event
+const eachEnv = (cb) => {
+  for (const [k, v] of Object.entries(process.env).filter(e => /^npm_/.test(e))) {
+    cb(k, v)
+  }
+}
 
-for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
-  if (env === 'npm_command') {
+eachEnv((key, value) => {
+  if (key === 'npm_command') {
     // should only be running this in the 'test' or 'run-script' command!
     // if the lifecycle event is 'test', then it'll be either 'test' or 'run',
     // otherwise it should always be run-script. Of course, it'll be missing
@@ -19,46 +24,31 @@ for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
         'should match "npm test" or "npm run test"'
       )
     } else {
-      t.match(process.env[env], /^(run-script|exec)$/)
+      t.match(process.env[key], /^(run-script|exec)$/)
     }
   }
-  delete process.env[env]
-}
+  delete process.env[key]
+})
 
 let CACHE
-const actualPlatform = process.platform
-const argv = [...process.argv]
+const _actualPlatform = process.platform
+const _argv = [...process.argv]
 
-const beWindows = () => {
-  Object.defineProperty(process, 'platform', {
-    value: 'win32',
-    configurable: true,
-  })
-}
-const bePosix = () => {
-  Object.defineProperty(process, 'platform', {
-    value: 'posix',
-    configurable: true,
-  })
-}
+const beWindows = () => process.platform = 'win32'
+const bePosix = () => process.platform = 'posix'
 
 t.beforeEach((t) => {
   CACHE = withEnvDir(t, 'npm_config_cache')
 })
 
 t.afterEach(async (t) => {
-  for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
-    delete process.env[env]
-  }
-  process.argv = argv
-  Object.defineProperty(process, 'platform', {
-    value: actualPlatform,
-    configurable: true,
-  })
+  eachEnv((env) => delete process.env[env])
+  process.argv = _argv
+  process.platform = _actualPlatform
 })
 
 t.test('not yet loaded', async t => {
-  const { Npm, logs } = mockNpm(t)
+  const { Npm, logs } = await loadMockNpm(t, { init: false })
   const npm = new Npm()
   t.match(npm, {
     started: Number,
@@ -180,7 +170,7 @@ t.test('npm.load', async t => {
   })
 
   t.test('node is a symlink', async t => {
-    const node = actualPlatform === 'win32' ? 'node.exe' : 'node'
+    const node = _actualPlatform === 'win32' ? 'node.exe' : 'node'
     const dir = t.testdir({
       '.npmrc': 'foo = bar',
       bin: t.fixture('symlink', dirname(process.execPath)),

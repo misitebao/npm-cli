@@ -8,11 +8,12 @@ const { load: loadMockNpm } = require('../fixtures/mock-npm.js')
 const { cmdList } = require('../../lib/utils/cmd-list.js')
 
 t.test('load each command', async t => {
-  const { npm, outputs } = await loadMockNpm(t)
   t.plan(cmdList.length)
-  npm.config.set('usage', true) // This makes npm.exec output the usage
   for (const cmd of cmdList.sort((a, b) => a.localeCompare(b, 'en'))) {
     t.test(cmd, async t => {
+      const { npm, outputs } = await loadMockNpm(t, {
+        config: { usage: true },
+      })
       const impl = await npm.cmd(cmd)
       if (impl.completion) {
         t.type(impl.completion, 'function', 'completion, if present, is a function')

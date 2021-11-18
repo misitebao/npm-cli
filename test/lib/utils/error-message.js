@@ -1,85 +1,32 @@
 const t = require('tap')
 const path = require('path')
 const { load: _loadMockNpm } = require('../../fixtures/mock-npm.js')
+const mockGlobal = require('../../fixtures/mock-global.js')
 
-t.cleanSnapshot = p => {
-  const cwd = new RegExp(process.cwd(), 'g')
-  return p.replace(cwd, '{CWD}')
-}
+t.cleanSnapshot = p =>
+  p.replace(new RegExp(process.cwd(), 'g'), '{CWD}')
 
-const {
-  getuid: getuidActual,
-  getgid: getgidActual,
-  arch: archActual,
-  version: versionActual,
-  platform: platformActual,
-} = process
-
-t.before(() => {
-  // make a bunch of stuff consistent for snapshots
-  process.getuid = () => 867
-  process.getgid = () => 5309
-  Object.defineProperty(process, 'arch', {
-    value: 'x64',
-    configurable: true,
-  })
-  Object.defineProperty(process, 'version', {
-    value: '123.456.789-node',
-    configurable: true,
-  })
+const _process = mockGlobal(t, process, {
+  getuid: () => 867,
+  getgid: () => 5309,
+  arch: 'x64',
+  version: '123.456.789-node',
+  platform: 'posix',
 })
 
-t.afterEach(() => {
-  Object.defineProperty(process, 'platform', {
-    value: 'posix',
-    configurable: true,
-  })
-})
-
-t.teardown(() => {
-  Object.defineProperty(process, 'getuid', {
-    value: getuidActual,
-    configurable: true,
-  })
-  Object.defineProperty(process, 'getgid', {
-    value: getgidActual,
-    configurable: true,
-  })
-  Object.defineProperty(process, 'arch', {
-    value: archActual,
-    configurable: true,
-  })
-  Object.defineProperty(process, 'version', {
-    value: versionActual,
-    configurable: true,
-  })
-  Object.defineProperty(process, 'platform', {
-    value: platformActual,
-    configurable: true,
-  })
-})
-
-const loadMockNpm = async (t, { load = true, windows = false, command, testdir } = {}) => {
+const loadMockNpm = async (t, { load, command, testdir, config } = {}) => {
   const { npm, ...rest } = await _loadMockNpm(t, {
     load,
     testdir,
+    config,
     mocks: {
       '../../package.json': {
         version: '123.456.789-npm',
       },
     },
-    config: {
-      'node-version': '99.99.99',
-    },
   })
   if (command !== undefined) {
     npm.command = command
-  }
-  if (windows) {
-    Object.defineProperty(process, 'platform', {
-      value: 'win32',
-      configurable: true,
-    })
   }
   return {
     npm,
@@ -87,25 +34,16 @@ const loadMockNpm = async (t, { load = true, windows = false, command, testdir }
   }
 }
 
-const errorMessage = (er, { mocks, logMocks, npm } = {}) => {
-  return t.mock('../../../lib/utils/error-message.js', {
-    ...mocks,
-    // XXX ???
-    get '../../../lib/utils/is-windows.js' () {
-      return process.platform === 'win32'
-    },
-    // XXX: this is ugh but it passes in the same mocks from npm to error message
-    // which is important because mock-npm mocks loggers by default
-    // but they are required separately in each file. So the error message
-    // and npm have different refernces to the logs in their mocks. We should find
-    // a way to either globally mock some modules or require modules
-    // in a single place and pass them around internally
-    ...logMocks,
-  })(er, npm)
-}
+const errorMessage = (er, { mocks, logMocks, npm } = {}) =>
+  t.mock('../../../lib/utils/error-message.js', { ...mocks, ...logMocks })(er, npm)
 
 t.test('just simple messages', async t => {
-  const npm = await loadMockNpm(t, { command: 'audit' })
+  const npm = await loadMockNpm(t, {
+    command: 'audit',
+    config: {
+      'node-version': '99.99.99',
+    },
+  })
   const codes = [
     'ENOAUDIT',
     'ENOLOCK',
@@ -237,6 +175,9 @@ t.test('args are cleaned', async t => {
 
 t.test('eacces/eperm', async t => {
   const runTest = (windows, loaded, cachePath, cacheDest) => async t => {
+    if (windows) {
+      mockGlobal(t, process, { platform: 'win32' })
+    }
     const npm = await loadMockNpm(t, { windows, load: loaded })
     const path = `${cachePath ? npm.cache : '/not/cache/dir'}/path`
     const dest = `${cacheDest ? npm.cache : '/not/cache/dir'}/dest`
@@ -264,6 +205,8 @@ t.test('eacces/eperm', async t => {
 })
 
 t.test('json parse', t => {
+  mockGlobal(t, process, { argv: ['arg', 'v'] })
+
   t.test('merge conflict in package.json', async t => {
     const testdir = {
       'package.json': `
@@ -306,11 +249,6 @@ t.test('json parse', t => {
 `,
     }
     const npm = await loadMockNpm(t, { testdir })
-    const { argv } = process
-    t.teardown(() => {
-      process.argv = argv
-    })
-    process.argv = ['arg', 'v']
     t.matchSnapshot(errorMessage(Object.assign(new Error('conflicted'), {
       code: 'EJSONPARSE',
       path: path.resolve(npm.prefix, 'package.json'),
@@ -323,11 +261,6 @@ t.test('json parse', t => {
       'package.json': 'not even slightly json',
     }
     const npm = await loadMockNpm(t, { testdir })
-    const { argv } = process
-    t.teardown(() => {
-      process.argv = argv
-    })
-    process.argv = ['arg', 'v']
     t.matchSnapshot(errorMessage(Object.assign(new Error('not json'), {
       code: 'EJSONPARSE',
       path: path.resolve(npm.prefix, 'package.json'),
@@ -340,11 +273,6 @@ t.test('json parse', t => {
       'blerg.json': 'not even slightly json',
     }
     const npm = await loadMockNpm(t, { testdir })
-    const { argv } = process
-    t.teardown(() => {
-      process.argv = argv
-    })
-    process.argv = ['arg', 'v']
     t.matchSnapshot(errorMessage(Object.assign(new Error('not json'), {
       code: 'EJSONPARSE',
       path: path.resolve(npm.prefix, 'blerg.json'),

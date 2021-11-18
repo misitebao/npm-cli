@@ -1,5 +1,5 @@
 const t = require('tap')
-const { load: loadMockNpm } = require('../../fixtures/mock-npm')
+const { load: _loadMockNpm } = require('../../fixtures/mock-npm')
 
 t.test('should audit using Arborist', async t => {
   let ARB_ARGS = null
@@ -8,7 +8,7 @@ t.test('should audit using Arborist', async t => {
   let AUDIT_REPORT_CALLED = false
   let ARB_OBJ = null
 
-  const { npm, outputs } = await loadMockNpm(t, {
+  const loadMockNpm = (t) => _loadMockNpm(t, {
     mocks: {
       'npm-audit-report': () => {
         AUDIT_REPORT_CALLED = true
@@ -36,6 +36,7 @@ t.test('should audit using Arborist', async t => {
   })
 
   t.test('audit', async t => {
+    const { npm, outputs } = await loadMockNpm(t)
     await npm.exec('audit', [])
     t.match(ARB_ARGS, { audit: true, path: npm.prefix })
     t.equal(AUDIT_CALLED, true, 'called audit')
@@ -44,6 +45,7 @@ t.test('should audit using Arborist', async t => {
   })
 
   t.test('audit fix', async t => {
+    const { npm } = await loadMockNpm(t)
     await npm.exec('audit', ['fix'])
     t.equal(REIFY_FINISH_CALLED, true, 'called reify output')
   })
@@ -51,7 +53,7 @@ t.test('should audit using Arborist', async t => {
 
 t.test('should audit - json', async t => {
   t.plan(1)
-  const { npm } = await loadMockNpm(t, {
+  const { npm } = await _loadMockNpm(t, {
     mocks: {
       'npm-audit-report': (_, opts) => {
         t.match(opts.reporter, 'json')
@@ -75,7 +77,7 @@ t.test('should audit - json', async t => {
 })
 
 t.test('report endpoint error', async t => {
-  const { npm, outputs, logs } = await loadMockNpm(t, {
+  const loadMockNpm = (t, options) => _loadMockNpm(t, {
     mocks: {
       'npm-audit-report': () => {
         throw new Error('should not call audit report when there are errors')
@@ -98,22 +100,18 @@ t.test('report endpoint error', async t => {
       },
       '../../lib/utils/reify-output.js': () => {},
     },
-    config: {
-      json: false,
-    },
+    ...options,
   })
 
   t.test('json=false', async t => {
+    const { npm, outputs, logs } = await loadMockNpm(t, { config: { json: false } })
     await t.rejects(npm.exec('audit', []), 'audit endpoint returned an error')
     t.match(logs.warn, [['audit', 'hello, this didnt work']])
     t.strictSame(outputs, [['this is a string']])
   })
 
   t.test('json=true', async t => {
-    t.teardown(() => {
-      npm.config.set('json', false)
-    })
-    npm.config.set('json', true)
+    const { npm, outputs, logs } = await loadMockNpm(t, { config: { json: true } })
     await t.rejects(npm.exec('audit', []), 'audit endpoint returned an error')
     t.match(logs.warn, [['audit', 'hello, this didnt work']])
     t.strictSame(outputs, [[
@@ -135,7 +133,7 @@ t.test('report endpoint error', async t => {
 })
 
 t.test('completion', async t => {
-  const { npm } = await loadMockNpm(t)
+  const { npm } = await _loadMockNpm(t)
   const audit = await npm.cmd('audit')
   t.test('fix', async t => {
     await t.resolveMatch(

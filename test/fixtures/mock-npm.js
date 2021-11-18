@@ -1,15 +1,13 @@
-const { title, execPath } = process
 const os = require('os')
 const fs = require('fs').promises
 const path = require('path')
 const mockLogs = require('./mock-logs')
+const mockGlobal = require('./mock-global')
 const log = require('../../lib/utils/log-shim')
 
 const RealMockNpm = (t, otherMocks = {}) => {
-  // Track if this test created something with its
-  // constructor so we can all teardown methods
-  // since those are handled in the exit handler
-  let instance = null
+  mockGlobal.reset(t, process, ['title', 'execPath'])
+  mockGlobal.reset(t, process.env, ['npm_command', 'COLOR'])
 
   const mockedLogs = mockLogs(otherMocks)
   const mock = {
@@ -17,8 +15,6 @@ const RealMockNpm = (t, otherMocks = {}) => {
     logs: mockedLogs.logs,
     outputs: [],
     joinedOutput: () => mock.outputs.map(o => o.join(' ')).join('\n'),
-    unfinishedTimers: () => instance && instance.unfinishedTimers,
-    finishedTimers: () => instance && instance.finishedTimers,
   }
 
   const Npm = t.mock('../../lib/npm.js', {
@@ -27,12 +23,7 @@ const RealMockNpm = (t, otherMocks = {}) => {
   })
 
   mock.Npm = class MockNpm extends Npm {
-    constructor () {
-      super()
-      instance = this
-    }
-
-    // npm.js tests need this restored to actually test this function!
+    // lib/npm.js tests needs this to actually test the function!
     originalOutput (...args) {
       super.output(...args)
     }
@@ -41,27 +32,6 @@ const RealMockNpm = (t, otherMocks = {}) => {
       mock.outputs.push(args)
     }
   }
-
-  // After each child test reset mock data so a single
-  // npm instance can be tested across multiple child tests
-  t.afterEach(() => {
-    mock.logs.length = 0
-    mock.outputs.length = 0
-    if (instance) {
-      instance.reset()
-    }
-  })
-
-  t.teardown(() => {
-    process.title = title
-    process.execPath = execPath
-    delete process.env.npm_command
-    delete process.env.COLOR
-    if (instance) {
-      instance.unload()
-      instance = null
-    }
-  })
 
   return mock
 }
@@ -94,9 +64,7 @@ const LoadMockNpm = async (t, {
   }
 
   const _level = log.level
-  t.teardown(() => {
-    log.level = _level
-  })
+  t.teardown(() => log.level = _level)
 
   if (config.loglevel) {
     // Set Log level as early as possible since it is set
@@ -105,51 +73,38 @@ const LoadMockNpm = async (t, {
   }
 
   const npm = init ? new Npm() : null
-  const shouldLoad = npm && load
-
-  const dir = t.testdir({ prefix: testdir, cache: {} })
 
   // Set env vars to testdirs so they are available when load is run
   // XXX: remove this for a less magic solution in the future
+  const dir = t.testdir({ prefix: testdir, cache: {} })
   const prefix = withEnvDir(t, 'npm_config_prefix', path.join(dir, 'prefix'))
   const cache = withEnvDir(t, 'npm_config_cache', path.join(dir, 'cache'))
   withEnvDir(t, 'PREFIX', prefix)
 
-  if (npm) {
-    // When this instance gets loaded the first time set the prefix
-    // to match the env var and set and configs passed in
-    const _load = npm.load
-    let initialLoad = true
-    npm.load = async (...args) => {
-      await _load.apply(npm, ...args)
-      if (initialLoad) {
-        // XXX: not sure why this is needed but tests broke without it
-        npm.prefix = prefix
-        for (const [k, v] of Object.entries(config)) {
-          npm.config.set(k, v)
-        }
-        if (config.loglevel) {
-        // Set global loglevel *again* since it possibly got reset during load
-        // XXX: remove with npmlog
-          log.level = config.loglevel
-        }
-        initialLoad = false
-      }
-    }
-  }
-
-  if (shouldLoad) {
+  if (load) {
     await npm.load()
+    npm.prefix = prefix
+    for (const [k, v] of Object.entries(config)) {
+      npm.config.set(k, v)
+    }
+    if (config.loglevel) {
+      // Set global loglevel *again* since it possibly got reset during load
+      // XXX: remove with npmlog
+      log.level = config.loglevel
+    }
+    t.teardown(() => npm.unload())
   }
 
   return {
     ...rest,
+    Npm,
     npm,
     prefix,
     cache,
     dir,
     debugFile: async () => {
-      const logFiles = await Promise.all(npm.logFiles.map(f => fs.readFile(f)))
+      const readFiles = npm.logFiles.map(f => fs.readFile(f))
+      const logFiles = await Promise.all(readFiles)
       return logFiles
         .flatMap((d) => d.toString().trim().split(os.EOL))
         .filter(Boolean)

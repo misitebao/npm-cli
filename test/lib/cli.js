@@ -1,6 +1,6 @@
 const t = require('tap')
 
-const { real: mockNpm, withEnvDir } = require('../fixtures/mock-npm.js')
+const { load: loadMockNpm, withEnvDir } = require('../fixtures/mock-npm.js')
 
 const unsupportedMock = {
   checkForBrokenNode: () => {},
@@ -20,9 +20,9 @@ exitHandlerMock.setNpm = npm => {
   exitHandlerNpm = npm
 }
 
-const cliMock = (t, mocks) => {
+const cliMock = async (t, mocks) => {
   withEnvDir(t, 'npm_config_cache')
-  const { Npm, outputs, logMocks, logs } = mockNpm(t, mocks)
+  const { Npm, outputs, logMocks, logs } = await loadMockNpm(t, { mocks, init: false })
   const cli = t.mock('../../lib/cli.js', {
     '../../lib/npm.js': Npm,
     '../../lib/utils/update-notifier.js': async () => null,
@@ -63,7 +63,7 @@ t.test('print the version, and treat npm_g as npm -g', async t => {
     version: process.version,
   })
 
-  const { logs, cli, Npm, outputs } = cliMock(t)
+  const { logs, cli, Npm, outputs } = await cliMock(t)
   await cli(proc)
 
   t.strictSame(proc.argv, ['node', 'npm', '-g', '-v'], 'npm process.argv was rewritten')
@@ -82,7 +82,7 @@ t.test('calling with --versions calls npm version with no args', async t => {
   const proc = processMock({
     argv: ['node', 'npm', 'install', 'or', 'whatever', '--versions'],
   })
-  const { logs, cli, Npm, outputs } = cliMock(t, {
+  const { logs, cli, Npm, outputs } = await cliMock(t, {
     '../../lib/commands/version.js': class Version {
       async exec (args) {
         t.strictSame(args, [])
@@ -111,7 +111,7 @@ t.test('logged argv is sanitized', async t => {
       'https://username:password@npmjs.org/test_url_with_a_password',
     ],
   })
-  const { logs, cli, Npm } = cliMock(t, {
+  const { logs, cli, Npm } = await cliMock(t, {
     '../../lib/commands/version.js': class Version {
       async exec (args) {}
     },
@@ -135,7 +135,7 @@ t.test('print usage if no params provided', async t => {
     argv: ['node', 'npm'],
   })
 
-  const { cli, outputs } = cliMock(t)
+  const { cli, outputs } = await cliMock(t)
   await cli(proc)
   t.match(outputs[0][0], 'Usage:', 'outputs npm usage')
   t.match(exitHandlerCalled, [], 'should call exitHandler with no args')
@@ -148,7 +148,7 @@ t.test('print usage if non-command param provided', async t => {
     argv: ['node', 'npm', 'tset'],
   })
 
-  const { cli, outputs } = cliMock(t)
+  const { cli, outputs } = await cliMock(t)
   await cli(proc)
   t.match(outputs[0][0], 'Unknown command: "tset"')
   t.match(outputs[0][0], 'Did you mean this?')
@@ -163,7 +163,7 @@ t.test('load error calls error handler', async t => {
   })
 
   const err = new Error('test load error')
-  const { cli } = cliMock(t, {
+  const { cli } = await cliMock(t, {
     '../../lib/utils/config/index.js': {
       definitions: null,
       flatten: null,
