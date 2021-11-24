@@ -2,17 +2,12 @@ const os = require('os')
 const fs = require('fs').promises
 const path = require('path')
 const mockLogs = require('./mock-logs')
-const mockGlobal = require('./mock-global')
+const mockGlobals = require('./mock-globals')
 const log = require('../../lib/utils/log-shim')
 
 const RealMockNpm = (t, otherMocks = {}) => {
-  mockGlobal.reset(t, process, ['title', 'execPath'])
-  mockGlobal.reset(t, process.env, ['npm_command', 'COLOR'])
-
-  const mockedLogs = mockLogs(otherMocks)
   const mock = {
-    logMocks: mockedLogs.mocks,
-    logs: mockedLogs.logs,
+    ...mockLogs(otherMocks),
     outputs: [],
     joinedOutput: () => mock.outputs.map(o => o.join(' ')).join('\n'),
   }
@@ -36,19 +31,8 @@ const RealMockNpm = (t, otherMocks = {}) => {
   return mock
 }
 
-const withEnvDir = (t, key, dir) => {
-  const { env: { [key]: _value } } = process
-
-  process.env[key] = typeof dir === 'string'
-    ? dir
-    : t.testdir(dir)
-
-  t.teardown(() => {
-    process.env[_value] = _value
-  })
-
-  return process.env[key]
-}
+// Resolve some options to a function call with supplied args
+const result = (fn, ...args) => typeof fn === 'function' ? fn(...args) : fn
 
 const LoadMockNpm = async (t, {
   init = true,
@@ -56,7 +40,22 @@ const LoadMockNpm = async (t, {
   testdir = {},
   config = {},
   mocks = {},
+  globals = null,
 } = {}) => {
+  // Mock some globals with their original values so they get torn down
+  // back to the original at the end of the test since they are manipulated
+  // by npm itself
+  mockGlobals(t, {
+    process: {
+      title: process.title,
+      execPath: process.execPath,
+      env: {
+        npm_command: process.env.npm_command,
+        COLOR: process.env.COLOR,
+      },
+    },
+  })
+
   const { Npm, ...rest } = RealMockNpm(t, mocks)
 
   if (!init && load) {
@@ -67,24 +66,31 @@ const LoadMockNpm = async (t, {
   t.teardown(() => log.level = _level)
 
   if (config.loglevel) {
-    // Set Log level as early as possible since it is set
+    // Set log level as early as possible since it is set
     // on the npmlog singleton and shared across everything
     log.level = config.loglevel
   }
 
-  const npm = init ? new Npm() : null
+  const dir = t.testdir({ root: testdir, cache: {} })
+  const prefix = path.join(dir, 'root')
+  const cache = path.join(dir, 'cache')
 
-  // Set env vars to testdirs so they are available when load is run
-  // XXX: remove this for a less magic solution in the future
-  const dir = t.testdir({ prefix: testdir, cache: {} })
-  const prefix = withEnvDir(t, 'npm_config_prefix', path.join(dir, 'prefix'))
-  const cache = withEnvDir(t, 'npm_config_cache', path.join(dir, 'cache'))
-  withEnvDir(t, 'PREFIX', prefix)
+  // Set cache to testdir via env var so it is available when load is run
+  // XXX: remove this for a solution where cache argv is passed in
+  mockGlobals(t, {
+    'process.env.npm_config_cache': cache,
+  })
+
+  if (globals) {
+    mockGlobals(t, result(globals, { prefix, cache }))
+  }
+
+  const npm = init ? new Npm() : null
+  t.teardown(() => npm && npm.unload())
 
   if (load) {
     await npm.load()
-    npm.prefix = prefix
-    for (const [k, v] of Object.entries(config)) {
+    for (const [k, v] of Object.entries(result(config, { npm, prefix, cache }))) {
       npm.config.set(k, v)
     }
     if (config.loglevel) {
@@ -92,7 +98,8 @@ const LoadMockNpm = async (t, {
       // XXX: remove with npmlog
       log.level = config.loglevel
     }
-    t.teardown(() => npm.unload())
+    npm.prefix = prefix
+    npm.cache = cache
   }
 
   return {
@@ -101,7 +108,6 @@ const LoadMockNpm = async (t, {
     npm,
     prefix,
     cache,
-    dir,
     debugFile: async () => {
       const readFiles = npm.logFiles.map(f => fs.readFile(f))
       const logFiles = await Promise.all(readFiles)
@@ -161,7 +167,5 @@ const FakeMockNpm = (base = {}) => {
 
 module.exports = {
   fake: FakeMockNpm,
-  real: RealMockNpm,
   load: LoadMockNpm,
-  withEnvDir,
 }

@@ -29,7 +29,7 @@ const mockLogs = (otherMocks = {}) => {
   // should be passed to multiple calls to t.mock.
   // XXX: this is messy and fragile and should be removed in favor
   // of some other way to collect and filter logs across all tests
-  const mocks = {
+  const logMocks = {
     'proc-log': merge(
       { LEVELS },
       LEVELS.reduce((acc, l) => {
@@ -65,7 +65,7 @@ const mockLogs = (otherMocks = {}) => {
     )),
   }
 
-  return { logs, mocks }
+  return { logs, logMocks }
 }
 
 module.exports = mockLogs

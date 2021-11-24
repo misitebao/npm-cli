@@ -1,6 +1,6 @@
 const t = require('tap')
 const { fake: mockNpm } = require('../../fixtures/mock-npm')
-const mockGlobal = require('../../fixtures/mock-global.js')
+const mockGlobals = require('../../fixtures/mock-globals.js')
 
 let result = []
 
@@ -34,7 +34,7 @@ t.afterEach(() => {
 })
 
 t.test('node@1', t => {
-  mockGlobal(t, process, { versions: { node: '1.0.0' } })
+  mockGlobals(t, { 'process.versions': { node: '1.0.0' } }, { replace: true })
 
   t.test('no args', async t => {
     const prefix = t.testdir({
@@ -104,7 +104,7 @@ t.test('node@1', t => {
 })
 
 t.test('empty versions', t => {
-  mockGlobal(t, process, { versions: {} })
+  mockGlobals(t, { 'process.versions': {} }, { replace: true })
 
   t.test('--json option', async t => {
     const prefix = t.testdir({})

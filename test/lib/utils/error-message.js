@@ -1,17 +1,19 @@
 const t = require('tap')
 const path = require('path')
 const { load: _loadMockNpm } = require('../../fixtures/mock-npm.js')
-const mockGlobal = require('../../fixtures/mock-global.js')
+const mockGlobals = require('../../fixtures/mock-globals.js')
 
 t.cleanSnapshot = p =>
   p.replace(new RegExp(process.cwd(), 'g'), '{CWD}')
 
-const _process = mockGlobal(t, process, {
-  getuid: () => 867,
-  getgid: () => 5309,
-  arch: 'x64',
-  version: '123.456.789-node',
-  platform: 'posix',
+mockGlobals(t, {
+  process: {
+    getuid: () => 867,
+    getgid: () => 5309,
+    arch: 'x64',
+    version: '123.456.789-node',
+    platform: 'posix',
+  },
 })
 
 const loadMockNpm = async (t, { load, command, testdir, config } = {}) => {
@@ -176,7 +178,7 @@ t.test('args are cleaned', async t => {
 t.test('eacces/eperm', async t => {
   const runTest = (windows, loaded, cachePath, cacheDest) => async t => {
     if (windows) {
-      mockGlobal(t, process, { platform: 'win32' })
+      mockGlobals(t, { 'process.platform': 'win32' })
     }
     const npm = await loadMockNpm(t, { windows, load: loaded })
     const path = `${cachePath ? npm.cache : '/not/cache/dir'}/path`
@@ -205,7 +207,7 @@ t.test('eacces/eperm', async t => {
 })
 
 t.test('json parse', t => {
-  mockGlobal(t, process, { argv: ['arg', 'v'] })
+  mockGlobals(t, { 'process.argv': ['arg', 'v'] })
 
   t.test('merge conflict in package.json', async t => {
     const testdir = {

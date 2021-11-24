@@ -1,6 +1,6 @@
 const t = require('tap')
 const unsupported = require('../../../lib/utils/unsupported.js')
-const mockGlobal = require('../../fixtures/mock-global.js')
+const mockGlobals = require('../../fixtures/mock-globals.js')
 
 const versions = [
   //          broken unsupported
@@ -64,17 +64,14 @@ t.test('checkForBrokenNode', t => {
   ]
 
   // then make it a thing that fails
-  mockGlobal(t, process, {
-    version: '1.2.3',
-    exit: (code) => {
+  mockGlobals(t, {
+    'console.error': msg => logs.push(msg),
+    'process.version': '1.2.3',
+    'process.exit': (code) => {
       t.equal(code, 1)
       t.strictSame(logs, expectLogs)
       t.end()
     },
-  })
-
-  mockGlobal(t, console, {
-    error: msg => logs.push(msg),
   })
 
   unsupported.checkForBrokenNode()
@@ -93,12 +90,9 @@ t.test('checkForUnsupportedNode', t => {
   ]
 
   // then make it a thing that fails
-  mockGlobal(t, process, {
-    version: '8.0.0',
-  })
-
-  mockGlobal(t, console, {
-    error: msg => logs.push(msg),
+  mockGlobals(t, {
+    'console.error': msg => logs.push(msg),
+    'process.version': '8.0.0',
   })
 
   unsupported.checkForUnsupportedNode()

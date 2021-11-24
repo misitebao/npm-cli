@@ -7,13 +7,15 @@ const completionScript = fs
   .replace(/^#!.*?\n/, '')
 
 const { load: _loadMockNpm } = require('../../fixtures/mock-npm')
-const mockGlobal = require('../../fixtures/mock-global')
+const mockGlobals = require('../../fixtures/mock-globals')
 
 const loadMockCompletion = async (t, o = {}) => {
-  const { global, windows, ...options } = o
-  let resetGlobal = {}
-  if (global) {
-    resetGlobal = mockGlobal(t, ...global)
+  const { globals, windows, ...options } = o
+  let resetGlobals = {}
+  if (globals) {
+    resetGlobals = {
+      ...mockGlobals(t, globals).reset,
+    }
   }
   const res = await _loadMockNpm(t, {
     mocks: {
@@ -24,7 +26,7 @@ const loadMockCompletion = async (t, o = {}) => {
   })
   const completion = await res.npm.cmd('completion')
   return {
-    resetGlobal,
+    resetGlobals,
     completion,
     ...res,
   }
@@ -32,11 +34,11 @@ const loadMockCompletion = async (t, o = {}) => {
 
 const loadMockCompletionComp = async (t, word, line) =>
   loadMockCompletion(t, {
-    global: [process.env, {
-      COMP_CWORD: word,
-      COMP_LINE: line,
-      COMP_POINT: line.length,
-    }],
+    globals: {
+      'process.env.COMP_CWORD': word,
+      'process.env.COMP_LINE': line,
+      'process.env.COMP_POINT': line.length,
+    },
   })
 
 t.test('completion', async t => {
@@ -47,7 +49,7 @@ t.test('completion', async t => {
         '.zshrc': 'aaa',
       },
     })
-    mockGlobal(t, process.env, { HOME: prefix })
+    mockGlobals(t, { 'process.env.HOME': prefix })
 
     await completion.completion({ w: 2 })
     t.matchSnapshot(outputs, 'both shells')
@@ -55,7 +57,7 @@ t.test('completion', async t => {
 
   t.test('completion completion no known shells', async t => {
     const { outputs, completion, prefix } = await loadMockCompletion(t)
-    mockGlobal(t, process.env, { HOME: prefix })
+    mockGlobals(t, { 'process.env.HOME': prefix })
 
     await completion.completion({ w: 2 })
     t.matchSnapshot(outputs, 'no responses')
@@ -70,22 +72,21 @@ t.test('completion', async t => {
 
   t.test('dump script when completion is not being attempted', async t => {
     let errorHandler, data
-    const { completion, resetGlobal } = await loadMockCompletion(t, {
-      global: [process.stdout, {
-        on: (event, handler) => {
+    const { completion, resetGlobals } = await loadMockCompletion(t, {
+      globals: {
+        'process.stdout.on': (event, handler) => {
           errorHandler = handler
-          resetGlobal.on()
+          resetGlobals['process.stdout.on']()
         },
-        write: (chunk, callback) => {
+        'process.stdout.write': (chunk, callback) => {
           data = chunk
           process.nextTick(() => {
             callback()
             errorHandler({ errno: 'EPIPE' })
           })
-          resetGlobal.write()
+          resetGlobals['process.stdout.write']()
         },
-
-      }],
+      },
     })
 
     await completion.exec({})
@@ -94,23 +95,23 @@ t.test('completion', async t => {
 
   t.test('dump script exits correctly when EPIPE is emitted on stdout', async t => {
     let errorHandler, data
-    const { completion, resetGlobal } = await loadMockCompletion(t, {
-      global: [process.stdout, {
-        on: (event, handler) => {
+    const { completion, resetGlobals } = await loadMockCompletion(t, {
+      globals: {
+        'process.stdout.on': (event, handler) => {
           if (event === 'error') {
             errorHandler = handler
           }
-          resetGlobal.on()
+          resetGlobals['process.stdout.on']()
         },
-        write: (chunk, callback) => {
+        'process.stdout.write': (chunk, callback) => {
           data = chunk
           process.nextTick(() => {
             errorHandler({ errno: 'EPIPE' })
             callback()
           })
-          resetGlobal.write()
+          resetGlobals['process.stdout.write']()
         },
-      }],
+      },
     })
 
     await completion.exec({})

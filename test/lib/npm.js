@@ -1,7 +1,8 @@
 const t = require('tap')
-const { resolve, dirname } = require('path')
+const { resolve, dirname, relative } = require('path')
 
-const { real: mockNpm, load: loadMockNpm, withEnvDir } = require('../fixtures/mock-npm.js')
+const { load: loadMockNpm } = require('../fixtures/mock-npm.js')
+const mockGlobal = require('../fixtures/mock-globals')
 
 // delete this so that we don't have configs from the fact that it
 // is being run by 'npm test'
@@ -30,16 +31,8 @@ eachEnv((key, value) => {
   delete process.env[key]
 })
 
-let CACHE
 const _actualPlatform = process.platform
 const _argv = [...process.argv]
-
-const beWindows = () => process.platform = 'win32'
-const bePosix = () => process.platform = 'posix'
-
-t.beforeEach((t) => {
-  CACHE = withEnvDir(t, 'npm_config_cache')
-})
 
 t.afterEach(async (t) => {
   eachEnv((env) => delete process.env[env])
@@ -48,8 +41,7 @@ t.afterEach(async (t) => {
 })
 
 t.test('not yet loaded', async t => {
-  const { Npm, logs } = await loadMockNpm(t, { init: false })
-  const npm = new Npm()
+  const { npm, logs } = await loadMockNpm(t, { load: false })
   t.match(npm, {
     started: Number,
     command: null,
@@ -69,8 +61,7 @@ t.test('not yet loaded', async t => {
 
 t.test('npm.load', async t => {
   t.test('load error', async t => {
-    const { Npm } = mockNpm(t)
-    const npm = new Npm()
+    const { npm } = await loadMockNpm(t, { load: false })
     const loadError = new Error('load error')
     npm.config.load = async () => {
       throw loadError
@@ -93,25 +84,24 @@ t.test('npm.load', async t => {
   })
 
   t.test('basic loading', async t => {
-    const { Npm, logs } = mockNpm(t)
-    const npm = new Npm()
-    const dir = t.testdir({
-      node_modules: {},
+    const { npm, logs, prefix: dir, cache } = await loadMockNpm(t, {
+      testdir: { node_modules: {} },
     })
-    await npm.load()
+
     t.equal(npm.loaded, true)
     t.equal(npm.config.loaded, true)
     t.equal(npm.config.get('force'), false)
     t.ok(npm.usage, 'has usage')
-    npm.config.set('prefix', dir)
 
     t.match(npm, {
       flatOptions: {},
     })
-    t.match(logs.timing.filter(([p]) => p === 'npm:load'), [['npm:load', /Completed in [0-9.]+ms/]])
+    t.match(logs.timing.filter(([p]) => p === 'npm:load'), [
+      ['npm:load', /Completed in [0-9.]+ms/],
+    ])
 
-    bePosix()
-    t.equal(resolve(npm.cache), resolve(CACHE), 'cache is cache')
+    mockGlobal(t, { process: { platform: 'posix' } })
+    t.equal(resolve(npm.cache), resolve(cache), 'cache is cache')
     const newCache = t.testdir()
     npm.cache = newCache
     t.equal(npm.config.get('cache'), newCache, 'cache setter sets config')
@@ -147,7 +137,7 @@ t.test('npm.load', async t => {
     t.equal(npm.bin, npm.globalBin, 'bin is global bin after prefix setter')
     t.not(npm.bin, npm.localBin, 'bin is not local bin after prefix setter')
 
-    beWindows()
+    mockGlobal(t, { process: { platform: 'win32' } })
     t.equal(npm.bin, npm.globalBin, 'bin is global bin in windows mode')
     t.equal(npm.dir, npm.globalDir, 'dir is global dir in windows mode')
 
@@ -158,9 +148,7 @@ t.test('npm.load', async t => {
 
   t.test('forceful loading', async t => {
     process.argv = [...process.argv, '--force', '--color', 'always']
-    const { Npm, logs } = mockNpm(t)
-    const npm = new Npm()
-    await npm.load()
+    const { logs } = await loadMockNpm(t)
     t.match(logs.warn, [
       [
         'using --force',
@@ -171,18 +159,9 @@ t.test('npm.load', async t => {
 
   t.test('node is a symlink', async t => {
     const node = _actualPlatform === 'win32' ? 'node.exe' : 'node'
-    const dir = t.testdir({
-      '.npmrc': 'foo = bar',
-      bin: t.fixture('symlink', dirname(process.execPath)),
-    })
-
-    const PATH = process.env.PATH || process.env.Path
-    process.env.PATH = resolve(dir, 'bin')
     process.argv = [
       node,
       process.argv[1],
-      '--prefix', dir,
-      '--userconfig', `${dir}/.npmrc`,
       '--usage',
       '--scope=foo',
       'token',
@@ -190,13 +169,19 @@ t.test('npm.load', async t => {
       'blergggg',
     ]
 
-    t.teardown(() => {
-      process.env.PATH = PATH
+    const { npm, logs, outputs, prefix } = await loadMockNpm(t, {
+      testdir: {
+        '.npmrc': 'foo = bar',
+        bin: t.fixture('symlink', dirname(process.execPath)),
+      },
+      config: ({ prefix }) => ({
+        userconfig: `./${relative(__dirname, prefix)}/.npmrc`,
+      }),
+      globals: ({ prefix }) => ({
+        'process.env.PATH': resolve(prefix, 'bin'),
+      }),
     })
 
-    const { Npm, logs, outputs } = mockNpm(t)
-    const npm = new Npm()
-    await npm.load()
     t.equal(npm.config.get('scope'), '@foo', 'added the @ sign to scope')
     t.match([
       ...logs.timing.filter(([p]) => p === 'npm:load:whichnode'),
@@ -206,11 +191,11 @@ t.test('npm.load', async t => {
       ['npm:load:whichnode', /Completed in [0-9.]+ms/],
       [
         'node symlink',
-        resolve(dir, 'bin', node),
+        resolve(prefix, 'bin', node),
       ],
       ['npm:load', /Completed in [0-9.]+ms/],
     ])
-    t.equal(process.execPath, resolve(dir, 'bin', node))
+    t.equal(process.execPath, resolve(prefix, 'bin', node))
 
     outputs.length = 0
     logs.length = 0
@@ -276,9 +261,7 @@ t.test('npm.load', async t => {
       '--workspaces', 'false',
       '--workspace', 'a',
     ]
-    const { Npm } = mockNpm(t)
-    const npm = new Npm()
-    npm.localPrefix = dir
+    const { npm } = await loadMockNpm(t, { load: false, testdir: dir })
     await t.rejects(
       npm.exec('run', []),
       /Can not use --no-workspaces and --workspace at the same time/
@@ -314,17 +297,12 @@ t.test('npm.load', async t => {
     process.argv = [
       process.execPath,
       process.argv[1],
-      '--userconfig',
-      resolve(dir, '.npmrc'),
-      '--color',
-      'false',
-      '--workspaces',
-      'true',
+      '--userconfig', resolve(dir, '.npmrc'),
+      '--color', 'false',
+      '--workspaces', 'true',
     ]
 
-    const { Npm, outputs } = mockNpm(t)
-    const npm = new Npm()
-    await npm.load()
+    const { npm, outputs } = await loadMockNpm(t, { testdir: dir })
     npm.localPrefix = dir
 
     // verify that calling the command with a short name still sets
@@ -383,9 +361,7 @@ t.test('npm.load', async t => {
       '--global',
       'true',
     ]
-    const { Npm } = mockNpm(t)
-    const npm = new Npm()
-    await npm.load()
+    const { npm } = await loadMockNpm(t, { testdir: dir })
     npm.localPrefix = dir
     // verify that calling the command with a short name still sets
     // the npm.command property to the full canonical name of the cmd.
@@ -406,9 +382,7 @@ t.test('set process.title', async t => {
       '--scope=foo',
       'ls',
     ]
-    const { Npm } = mockNpm(t)
-    const npm = new Npm()
-    await npm.load()
+    const { npm } = await loadMockNpm(t)
     t.equal(npm.title, 'npm ls')
     t.equal(process.title, 'npm ls')
   })
@@ -423,9 +397,7 @@ t.test('set process.title', async t => {
       'revoke',
       'deadbeefcafebad',
     ]
-    const { Npm } = mockNpm(t)
-    const npm = new Npm()
-    await npm.load()
+    const { npm } = await loadMockNpm(t)
     t.equal(npm.title, 'npm token revoke ***')
     t.equal(process.title, 'npm token revoke ***')
   })
@@ -439,9 +411,7 @@ t.test('set process.title', async t => {
       'token',
       'revoke',
     ]
-    const { Npm } = mockNpm(t)
-    const npm = new Npm()
-    await npm.load()
+    const { npm } = await loadMockNpm(t)
     t.equal(npm.title, 'npm token revoke')
     t.equal(process.title, 'npm token revoke')
   })
@@ -464,9 +434,8 @@ t.test('debug-log', async t => {
 })
 
 t.test('timings', async t => {
-  t.test('gets/sets timers', t => {
-    const { Npm, logs } = mockNpm(t)
-    const npm = new Npm()
+  t.test('gets/sets timers', async t => {
+    const { npm, logs } = await loadMockNpm(t, { load: false })
     process.emit('time', 'foo')
     process.emit('time', 'bar')
     t.match(npm.unfinishedTimers.get('foo'), Number, 'foo timer is a number')
@@ -524,23 +493,24 @@ t.test('timings', async t => {
   })
 })
 
-t.test('output clears progress and console.logs the message', t => {
+t.test('output clears progress and console.logs the message', async t => {
   t.plan(2)
   let showingProgress = true
-  const { Npm, logs } = mockNpm(t, {
-    npmlog: {
-      clearProgress: () => showingProgress = false,
-      showProgress: () => showingProgress = true,
+  const logs = []
+  mockGlobal(t, {
+    'console.log': (...args) => {
+      t.equal(showingProgress, false, 'should not be showing progress right now')
+      logs.push(args)
     },
   })
-  const npm = new Npm()
-  const { log } = console
-  console.log = (...args) => {
-    t.equal(showingProgress, false, 'should not be showing progress right now')
-    logs.push(args)
-  }
-  t.teardown(() => {
-    console.log = log
+  const { npm } = await loadMockNpm(t, {
+    load: false,
+    mocks: {
+      npmlog: {
+        clearProgress: () => showingProgress = false,
+        showProgress: () => showingProgress = true,
+      },
+    },
   })
   npm.originalOutput('hello')
   t.match(logs, [['hello']])
@@ -548,8 +518,7 @@ t.test('output clears progress and console.logs the message', t => {
 })
 
 t.test('unknown command', async t => {
-  const { Npm } = mockNpm(t)
-  const npm = new Npm()
+  const { npm } = await loadMockNpm(t, { load: false })
   await t.rejects(
     npm.cmd('thisisnotacommand'),
     { code: 'EUNKNOWNCOMMAND' }

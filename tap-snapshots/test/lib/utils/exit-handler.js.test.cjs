@@ -28,6 +28,8 @@ exports[`test/lib/utils/exit-handler.js TAP handles unknown error with logs and 
 35 verbose exit 1
 36 timing npm Completed in {TIME}ms
 37 verbose code 1
+38 error A complete log of this run can be found in:
+38 error {CWD}/test/lib/utils/tap-testdir-exit-handler-handles-unknown-error-with-logs-and-debug-file/cache/_logs/{TIME}-debug-0.log
 `
 
 exports[`test/lib/utils/exit-handler.js TAP handles unknown error with logs and debug file > logs 1`] = `
@@ -53,4 +55,6 @@ error ERR DETAIL Unknown error
 verbose exit 1
 timing npm Completed in {TIME}ms
 verbose code 1
+error  A complete log of this run can be found in:
+    {CWD}/test/lib/utils/tap-testdir-exit-handler-handles-unknown-error-with-logs-and-debug-file/cache/_logs/{TIME}-debug-0.log
 `

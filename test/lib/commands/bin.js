@@ -58,6 +58,7 @@ t.test('bin -g (not in path)', async t => {
   console.error = (output) => {
     t.equal(output, '(not in PATH env variable)', 'prints env warning')
   }
+
   const dir = '/bin/dir'
 
   const Bin = t.mock('../../../lib/commands/bin.js', {

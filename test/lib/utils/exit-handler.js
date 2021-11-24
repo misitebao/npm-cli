@@ -1,9 +1,13 @@
 const t = require('tap')
-const os = require('os')
 const EventEmitter = require('events')
-const log = require('../../../lib/utils/log-shim')
 const { format } = require('../../../lib/utils/log-file')
 const { load: loadMockNpm } = require('../../fixtures/mock-npm')
+const mockGlobals = require('../../fixtures/mock-globals')
+
+const pick = (obj, ...keys) => keys.reduce((acc, key) => {
+  acc[key] = obj[key]
+  return acc
+}, {})
 
 t.formatSnapshot = (obj) => {
   if (Array.isArray(obj)) {
@@ -26,61 +30,25 @@ t.cleanSnapshot = (path) => {
     .replace(/(\/)[\d\-_ZT]*(-debug-\d+\.log)/g, '$1{TIME}$2')
 }
 
-t.test('bootstrap tap before cutting off process ref', (t) => {
-  t.ok('ok')
-  t.end()
-})
-
-// Keep track of things to teardown globally
-const teardown = []
-
-const _level = log.level
-teardown.push(() => log.level = _level)
-
 // cut off process from script so that it won't quit the test runner
-// while trying to call process.exit. This also needs to be done
-// before mocking any npm internals since those emit events
-// on whatever is assigned to the global process
-const _process = process
-process = Object.assign(
-  new EventEmitter(),
-  {
-    argv: ['/node', ..._process.argv.slice(1)],
-    cwd: _process.cwd,
-    env: _process.env,
-    version: 'v1.0.0',
+// while trying to run through the myriad of cases.  need to make it
+// have all the functions signal-exit relies on so that it doesn't
+// nerf itself, thinking global.process is broken or gone.
+mockGlobals(t, {
+  process: Object.assign(new EventEmitter(), {
     exit: (code) => {
       process.exitCode = code || process.exitCode || 0
       process.emit('exit', process.exitCode)
     },
-    stdout: { write (_, cb) {
-      cb()
-    } },
-    stderr: { write () {} },
-    hrtime: _process.hrtime,
-  }
-)
-teardown.push(() => process = _process)
-
-// overrides OS type/release for cross platform snapshots
-const _osType = os.type
-const _osRelease = os.release
-os.type = () => 'Foo'
-os.release = () => '1.0.0'
-teardown.push(() => {
-  os.type = _osType
-  os.release = _osRelease
-})
-
-t.teardown(() => {
-  teardown.forEach((fn) => fn())
-})
+    argv: ['/node', ...process.argv.slice(1)],
+    version: 'v1.0.0',
+    ...pick(process, 'execPath', 'stdout', 'stderr', 'cwd', 'env'),
+  }),
+}, { replace: true })
 
 const mockExitHandler = async (t, { init, load, testdir, config } = {}) => {
-  // override for console errors in log handler
   const errors = []
-  const _consoleError = console.error
-  console.error = (err) => errors.push(err)
+  mockGlobals(t, { 'console.error': (err) => errors.push(err) })
 
   const { npm, logMocks, ...rest } = await loadMockNpm(t, {
     init,
@@ -92,7 +60,7 @@ const mockExitHandler = async (t, { init, load, testdir, config } = {}) => {
       },
     },
     config: {
-      loglevel: 'silent',
+      loglevel: 'notice',
       ...config,
     },
   })
@@ -103,6 +71,10 @@ const mockExitHandler = async (t, { init, load, testdir, config } = {}) => {
       summary: [['ERR SUMMARY', err.message]],
       detail: [['ERR DETAIL', err.message]],
     }),
+    os: {
+      type: () => 'Foo',
+      release: () => '1.0.0',
+    },
     ...logMocks,
   })
 
@@ -110,8 +82,7 @@ const mockExitHandler = async (t, { init, load, testdir, config } = {}) => {
     exitHandler.setNpm(npm)
   }
 
-  t.teardown((t) => {
-    console.error = _consoleError
+  t.teardown(() => {
     delete process.exitCode
     process.removeAllListeners('exit')
   })
@@ -120,9 +91,9 @@ const mockExitHandler = async (t, { init, load, testdir, config } = {}) => {
     ...rest,
     errors,
     npm,
-    // Make it async to make testing ergonomics a little
-    // easier so we dont need to t.plan() every test to
-    // make sure we get process.exit called
+    // // Make it async to make testing ergonomics a little
+    // // easier so we dont need to t.plan() every test to
+    // // make sure we get process.exit called
     exitHandler: (...args) => new Promise(resolve => {
       process.once('exit', resolve)
       exitHandler(...args)
@@ -171,7 +142,9 @@ t.test('handles unknown error with logs and debug file', async (t) => {
 })
 
 t.test('exit handler never called - loglevel silent', async (t) => {
-  const { logs, errors } = await mockExitHandler(t)
+  const { logs, errors } = await mockExitHandler(t, {
+    config: { loglevel: 'silent' },
+  })
   process.emit('exit', 1)
   t.match(logs.error, [
     ['', /Exit handler never called/],
@@ -182,7 +155,6 @@ t.test('exit handler never called - loglevel silent', async (t) => {
 
 t.test('exit handler never called - loglevel notice', async (t) => {
   const { logs, errors } = await mockExitHandler(t)
-  log.level = 'notice'
   process.emit('exit', 1)
   t.equal(process.exitCode, 1)
   t.match(logs.error, [
@@ -279,7 +251,7 @@ t.test('npm.config not ready', async (t) => {
 })
 
 t.test('timing with no error', async (t) => {
-  const { exitHandler, timingFile, npm } = await mockExitHandler(t, {
+  const { exitHandler, timingFile, npm, logs } = await mockExitHandler(t, {
     config: {
       timing: true,
     },
@@ -289,6 +261,11 @@ t.test('timing with no error', async (t) => {
   const timingFileData = await timingFile()
 
   t.equal(process.exitCode, 0)
+
+  t.match(logs.error, [
+    ['', /A complete log of this run can be found in:[\s\S]*-debug-\d\.log/],
+  ])
+
   t.match(
     timingFileData,
     Object.keys(npm.finishedTimers).reduce((acc, k) => {
@@ -303,6 +280,34 @@ t.test('timing with no error', async (t) => {
     npm: Number,
     logfile: String,
     logfiles: [String],
+  })
+})
+
+t.test('unfinished timers', async (t) => {
+  const { exitHandler, timingFile, npm } = await mockExitHandler(t, {
+    config: {
+      timing: true,
+    },
+  })
+
+  process.emit('time', 'foo')
+  process.emit('time', 'bar')
+
+  await exitHandler()
+  const timingFileData = await timingFile()
+
+  t.equal(process.exitCode, 0)
+  t.match(npm.unfinishedTimers, new Map([['foo', Number], ['bar', Number]]))
+  t.match(timingFileData, {
+    command: [],
+    version: '1.0.0',
+    npm: Number,
+    logfile: String,
+    logfiles: [String],
+    unfinished: {
+      foo: [Number, Number],
+      bar: [Number, Number],
+    },
   })
 })
 
