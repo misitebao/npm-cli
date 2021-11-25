@@ -37,12 +37,15 @@ t.cleanSnapshot = (path) => {
 mockGlobals(t, {
   process: Object.assign(new EventEmitter(), {
     ...pick(process, 'execPath', 'stdout', 'stderr', 'cwd', 'env'),
+    argv: ['/node', ...process.argv.slice(1)],
+    version: 'v1.0.0',
+    kill: () => {},
+    reallyExit: (code) => process.exit(code),
+    pid: 123456,
     exit: (code) => {
       process.exitCode = code || process.exitCode || 0
       process.emit('exit', process.exitCode)
     },
-    argv: ['/node', ...process.argv.slice(1)],
-    version: 'v1.0.0',
   }),
 }, { replace: true })
 
