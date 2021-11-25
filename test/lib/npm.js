@@ -237,31 +237,32 @@ t.test('npm.load', async t => {
   })
 
   t.test('--no-workspaces with --workspace', async t => {
-    const dir = t.testdir({
-      packages: {
-        a: {
-          'package.json': JSON.stringify({
-            name: 'a',
-            version: '1.0.0',
-            scripts: { test: 'echo test a' },
-          }),
-        },
-      },
-      'package.json': JSON.stringify({
-        name: 'root',
-        version: '1.0.0',
-        workspaces: ['./packages/*'],
-      }),
-    })
     process.argv = [
       process.execPath,
       process.argv[1],
-      '--userconfig', resolve(dir, '.npmrc'),
       '--color', 'false',
       '--workspaces', 'false',
       '--workspace', 'a',
     ]
-    const { npm } = await loadMockNpm(t, { load: false, testdir: dir })
+    const { npm } = await loadMockNpm(t, {
+      load: false,
+      testdir: {
+        packages: {
+          a: {
+            'package.json': JSON.stringify({
+              name: 'a',
+              version: '1.0.0',
+              scripts: { test: 'echo test a' },
+            }),
+          },
+        },
+        'package.json': JSON.stringify({
+          name: 'root',
+          version: '1.0.0',
+          workspaces: ['./packages/*'],
+        }),
+      },
+    })
     await t.rejects(
       npm.exec('run', []),
       /Can not use --no-workspaces and --workspace at the same time/
@@ -269,41 +270,37 @@ t.test('npm.load', async t => {
   })
 
   t.test('workspace-aware configs and commands', async t => {
-    const dir = t.testdir({
-      packages: {
-        a: {
-          'package.json': JSON.stringify({
-            name: 'a',
-            version: '1.0.0',
-            scripts: { test: 'echo test a' },
-          }),
-        },
-        b: {
-          'package.json': JSON.stringify({
-            name: 'b',
-            version: '1.0.0',
-            scripts: { test: 'echo test b' },
-          }),
-        },
-      },
-      'package.json': JSON.stringify({
-        name: 'root',
-        version: '1.0.0',
-        workspaces: ['./packages/*'],
-      }),
-      '.npmrc': '',
-    })
-
     process.argv = [
       process.execPath,
       process.argv[1],
-      '--userconfig', resolve(dir, '.npmrc'),
       '--color', 'false',
       '--workspaces', 'true',
     ]
-
-    const { npm, outputs } = await loadMockNpm(t, { testdir: dir })
-    npm.localPrefix = dir
+    const { npm, outputs } = await loadMockNpm(t, {
+      testdir: {
+        packages: {
+          a: {
+            'package.json': JSON.stringify({
+              name: 'a',
+              version: '1.0.0',
+              scripts: { test: 'echo test a' },
+            }),
+          },
+          b: {
+            'package.json': JSON.stringify({
+              name: 'b',
+              version: '1.0.0',
+              scripts: { test: 'echo test b' },
+            }),
+          },
+        },
+        'package.json': JSON.stringify({
+          name: 'root',
+          version: '1.0.0',
+          workspaces: ['./packages/*'],
+        }),
+      },
+    })
 
     // verify that calling the command with a short name still sets
     // the npm.command property to the full canonical name of the cmd.
@@ -327,42 +324,40 @@ t.test('npm.load', async t => {
   })
 
   t.test('workspaces in global mode', async t => {
-    const dir = t.testdir({
-      packages: {
-        a: {
-          'package.json': JSON.stringify({
-            name: 'a',
-            version: '1.0.0',
-            scripts: { test: 'echo test a' },
-          }),
-        },
-        b: {
-          'package.json': JSON.stringify({
-            name: 'b',
-            version: '1.0.0',
-            scripts: { test: 'echo test b' },
-          }),
-        },
-      },
-      'package.json': JSON.stringify({
-        name: 'root',
-        version: '1.0.0',
-        workspaces: ['./packages/*'],
-      }),
-    })
     process.argv = [
       process.execPath,
       process.argv[1],
-      '--userconfig',
-      resolve(dir, '.npmrc'),
       '--color',
       'false',
       '--workspaces',
       '--global',
       'true',
     ]
-    const { npm } = await loadMockNpm(t, { testdir: dir })
-    npm.localPrefix = dir
+    const { npm } = await loadMockNpm(t, {
+      testdir: {
+        packages: {
+          a: {
+            'package.json': JSON.stringify({
+              name: 'a',
+              version: '1.0.0',
+              scripts: { test: 'echo test a' },
+            }),
+          },
+          b: {
+            'package.json': JSON.stringify({
+              name: 'b',
+              version: '1.0.0',
+              scripts: { test: 'echo test b' },
+            }),
+          },
+        },
+        'package.json': JSON.stringify({
+          name: 'root',
+          version: '1.0.0',
+          workspaces: ['./packages/*'],
+        }),
+      },
+    })
     // verify that calling the command with a short name still sets
     // the npm.command property to the full canonical name of the cmd.
     npm.command = null
