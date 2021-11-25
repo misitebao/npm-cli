@@ -2,40 +2,51 @@ const t = require('tap')
 const fs = require('fs').promises
 const path = require('path')
 const os = require('os')
-
+const fsMiniPass = require('fs-minipass')
+const rimraf = require('rimraf')
 const LogFile = require('../../../lib/utils/log-file.js')
 
 const last = arr => arr[arr.length - 1]
+const range = (n) => Array.from(Array(n).keys())
 
-const readLogs = async (dir) => {
-  const logDir = await fs.readdir(dir)
-  return Promise.all(logDir.map(async (f) => {
-    const logs = await fs.readFile(path.join(dir, f), 'utf8')
-    const rawLogs = logs.split(os.EOL)
-    return {
-      filename: f,
-      rawLogs,
-      logs: rawLogs.filter(Boolean),
-    }
-  }))
+const loadLogFile = (options, { buffer = [], mocks, testdir = {} } = {}) => {
+  const root = t.testdir(testdir)
+  const MockLogFile = t.mock('../../../lib/utils/log-file.js', mocks)
+  const logFile = new MockLogFile(options)
+  buffer.forEach((b) => logFile.log(...b))
+  const cleanLogs = logFile.load({ dir: root, ...options })
+  t.teardown(() => logFile.off())
+  return {
+    root,
+    logFile,
+    LogFile,
+    cleanLogs,
+    readLogs: async () => {
+      const logDir = await fs.readdir(root)
+      return Promise.all(logDir.map(async (filename) => {
+        const content = await fs.readFile(path.join(root, filename), 'utf8')
+        const rawLogs = content.split(os.EOL)
+        return {
+          filename,
+          content,
+          rawLogs,
+          logs: rawLogs.filter(Boolean),
+        }
+      }))
+    },
+  }
 }
 
-t.test('stuff', async t => {
-  const root = t.testdir()
-
-  const logFile = new LogFile({
-    maxLogsPerFile: 10,
+t.test('init', async t => {
+  const maxLogsPerFile = 10
+  const { root, logFile, readLogs } = loadLogFile({
+    maxLogsPerFile,
     maxFilesPerProcess: 20,
+  }, {
+    buffer: [['error', 'buffered']],
   })
 
-  logFile.log('error', 'buffered')
-
-  logFile.load({
-    dir: root,
-    maxFiles: 100,
-  })
-
-  for (const i of [...new Array(50)].map((_, i) => i)) {
+  for (const i of range(50)) {
     logFile.log('error', `log ${i}`)
   }
 
@@ -44,98 +55,207 @@ t.test('stuff', async t => {
   logFile.log('resume')
   logFile.log('pause')
 
-  for (const i of [...new Array(50)].map((_, i) => i)) {
+  for (const i of range(50)) {
     logFile.log('verb', `log ${i}`)
   }
 
   logFile.off()
   logFile.log('error', 'ignored')
 
-  const logs = await readLogs(root)
-  t.equal(logs.length, 11)
-  t.ok(logs.slice(0, 10).every(f => f.logs.length === 10))
-  t.ok(last(logs).logs.length, 1)
-  t.ok(logs.every(f => last(f.rawLogs) === ''))
+  const logs = await readLogs()
+  t.equal(logs.length, 11, 'total log files')
+  t.ok(logs.slice(0, 10).every(f => f.logs.length === maxLogsPerFile), 'max logs per file')
+  t.ok(last(logs).logs.length, 1, 'last file has remaining logs')
+  t.ok(logs.every(f => last(f.rawLogs) === ''), 'all logs end with newline')
   t.strictSame(
     logFile.files,
     logs.map((l) => path.resolve(root, l.filename))
   )
 })
 
-// const glob = require('glob')
-// const rimraf = require('rimraf')
-// const mocks = { glob, rimraf }
-// const cleanup = t.mock('../../../lib/utils/cleanup-log-files.js', {
-//   glob: (...args) => mocks.glob(...args),
-//   rimraf: (...args) => mocks.rimraf(...args),
-// })
-// const { basename } = require('path')
+t.test('max files per process', async t => {
+  const maxLogsPerFile = 10
+  const maxFilesPerProcess = 5
+  const { logFile, readLogs } = loadLogFile({
+    maxLogsPerFile,
+    maxFilesPerProcess,
+  })
 
-// const fs = require('fs')
+  for (const i of range(maxLogsPerFile * maxFilesPerProcess)) {
+    logFile.log('error', `log ${i}`)
+  }
 
-// t.test('clean up those files', t => {
-//   const cache = t.testdir({
-//     _logs: {
-//       '1-debug.log': 'hello',
-//       '2-debug.log': 'hello',
-//       '3-debug.log': 'hello',
-//       '4-debug.log': 'hello',
-//       '5-debug.log': 'hello',
-//     },
-//   })
-//   const warn = (...warning) => t.fail('failed cleanup', { warning })
-//   return cleanup(cache, 3, warn).then(() => {
-//     t.strictSame(fs.readdirSync(cache + '/_logs').sort(), [
-//       '3-debug.log',
-//       '4-debug.log',
-//       '5-debug.log',
-//     ])
-//   })
-// })
+  for (const i of range(5)) {
+    logFile.log('verbose', `log ${i}`)
+  }
 
-// t.test('nothing to clean up', t => {
-//   const cache = t.testdir({
-//     _logs: {
-//       '4-debug.log': 'hello',
-//       '5-debug.log': 'hello',
-//     },
-//   })
-//   const warn = (...warning) => t.fail('failed cleanup', { warning })
-//   return cleanup(cache, 3, warn).then(() => {
-//     t.strictSame(fs.readdirSync(cache + '/_logs').sort(), [
-//       '4-debug.log',
-//       '5-debug.log',
-//     ])
-//   })
-// })
+  const logs = await readLogs()
+  t.equal(logs.length, maxFilesPerProcess, 'total log files')
+  t.equal(last(last(logs).logs), '49 error log 49')
+})
 
-// t.test('glob fail', t => {
-//   mocks.glob = (pattern, cb) => cb(new Error('no globbity'))
-//   t.teardown(() => mocks.glob = glob)
-//   const cache = t.testdir({})
-//   const warn = (...warning) => t.fail('failed cleanup', { warning })
-//   return cleanup(cache, 3, warn)
-// })
+t.test('stream error', async t => {
+  let times = 0
+  const { logFile, readLogs } = loadLogFile({
+    maxLogsPerFile: 1,
+    maxFilesPerProcess: 99,
+  }, {
+    mocks: {
+      'fs-minipass': {
+        WriteStreamSync: class {
+          constructor (...args) {
+            if (times >= 5) {
+              throw new Error('bad stream')
+            }
+            times++
+            return new fsMiniPass.WriteStreamSync(...args)
+          }
+        },
+      },
+    },
+  })
 
-// t.test('rimraf fail', t => {
-//   mocks.rimraf = (file, cb) => cb(new Error('youll never rimraf me!'))
-//   t.teardown(() => mocks.rimraf = rimraf)
+  for (const i of range(10)) {
+    logFile.log('verbose', `log ${i}`)
+  }
 
-//   const cache = t.testdir({
-//     _logs: {
-//       '1-debug.log': 'hello',
-//       '2-debug.log': 'hello',
-//       '3-debug.log': 'hello',
-//       '4-debug.log': 'hello',
-//       '5-debug.log': 'hello',
-//     },
-//   })
-//   const warnings = []
-//   const warn = (...warning) => warnings.push(basename(warning[2]))
-//   return cleanup(cache, 3, warn).then(() => {
-//     t.strictSame(warnings.sort((a, b) => a.localeCompare(b, 'en')), [
-//       '1-debug.log',
-//       '2-debug.log',
-//     ])
-//   })
-// })
+  const logs = await readLogs()
+  t.equal(logs.length, 5, 'total log files')
+})
+
+t.test('initial stream error', async t => {
+  const { logFile, readLogs } = loadLogFile({}, {
+    mocks: {
+      'fs-minipass': {
+        WriteStreamSync: class {
+          constructor (...args) {
+            throw new Error('no stream')
+          }
+        },
+      },
+    },
+  })
+
+  for (const i of range(10)) {
+    logFile.log('verbose', `log ${i}`)
+  }
+
+  const logs = await readLogs()
+  t.equal(logs.length, 0, 'total log files')
+})
+
+t.test('turns off', async t => {
+  const { logFile, readLogs } = loadLogFile()
+
+  logFile.log('error', 'test')
+  logFile.off()
+  logFile.log('error', 'test2')
+  logFile.load()
+
+  const logs = await readLogs()
+  t.equal(logs.length, 1)
+  t.equal(logs[0].logs[0], '0 error test')
+})
+
+t.test('clean', async t => {
+  t.test('cleans logs', async t => {
+    const logsMax = 5
+    const oldId = LogFile.logId()
+    const { cleanLogs, readLogs } = loadLogFile({
+      logsMax,
+    }, {
+      testdir: range(10).reduce((acc, i) => {
+        acc[LogFile.fileName(oldId, i)] = 'hello'
+        return acc
+      }, {}),
+    })
+
+    await cleanLogs
+    const logs = await readLogs()
+
+    t.equal(logs.length, logsMax + 1)
+  })
+
+  t.test('doesnt need to clean', async t => {
+    const logsMax = 20
+    const oldLogs = 10
+    const oldId = LogFile.logId()
+    const { cleanLogs, readLogs } = loadLogFile({
+      logsMax,
+    }, {
+      testdir: range(oldLogs).reduce((acc, i) => {
+        acc[LogFile.fileName(oldId, i)] = 'hello'
+        return acc
+      }, {}),
+    })
+
+    await cleanLogs
+    const logs = await readLogs()
+
+    t.equal(logs.length, oldLogs + 1)
+  })
+
+  t.test('glob error', async t => {
+    const { cleanLogs, readLogs } = loadLogFile({
+      logsMax: 5,
+    }, {
+      mocks: {
+        glob: () => {
+          throw new Error('bad glob')
+        },
+      },
+    })
+
+    await cleanLogs
+    const logs = await readLogs()
+    t.match(last(logs).content, /error cleaning log files .* bad glob/)
+  })
+
+  t.test('rimraf error', async t => {
+    const logsMax = 5
+    const oldLogs = 10
+    const oldId = LogFile.logId()
+    let count = 0
+    const { cleanLogs, readLogs } = loadLogFile({
+      logsMax,
+    }, {
+      testdir: range(oldLogs).reduce((acc, i) => {
+        acc[LogFile.fileName(oldId, i)] = 'hello'
+        return acc
+      }, {}),
+      mocks: {
+        rimraf: (...args) => {
+          if (count >= 3) {
+            throw new Error('bad rimraf')
+          }
+          count++
+          return rimraf(...args)
+        },
+      },
+    })
+
+    await cleanLogs
+    const logs = await readLogs()
+    t.equal(logs.length, oldLogs - 3 + 1)
+    t.match(last(logs).content, /error removing log file .* bad rimraf/)
+  })
+})
+
+t.test('snapshot', async t => {
+  const { logFile, readLogs } = loadLogFile()
+
+  logFile.log(...[
+    'error',
+    'PREFIX',
+    'has',
+    'many',
+    'errors',
+    new Error('message'),
+    new Error('message2'),
+  ])
+
+  logFile.log('error', '', 'no prefix')
+
+  const logs = await readLogs()
+  t.matchSnapshot(logs.map(l => l.content))
+})
