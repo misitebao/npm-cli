@@ -126,12 +126,12 @@ t.test('handles unknown error with logs and debug file', async (t) => {
 
   t.equal(process.exitCode, 1)
   logs.forEach((l, i) => {
-    t.match(debugContent, format(i + 1, ...l).trim(), 'log appears in debug file')
+    t.match(debugContent, format(i, ...l).trim(), 'log appears in debug file')
   })
   const lastLog = debugContent
     .split('\n')
     .reduce((__, l) => parseInt(l.match(/^(\d+)\s/)[1]))
-  t.equal(logs.length, lastLog)
+  t.equal(logs.length, lastLog + 1)
   t.match(logs.error, [
     ['code', 'ECODE'],
     ['ERR SUMMARY', 'Unknown error'],
@@ -176,6 +176,27 @@ t.test('exit handler never called - no npm', async (t) => {
     ['', /error with npm itself/],
   ])
   t.strictSame(errors, [''], 'logs one empty string to console.error')
+})
+
+t.test('exit handler called - no npm', async (t) => {
+  const { exitHandler, errors } = await mockExitHandler(t, { init: false })
+  await exitHandler()
+  t.equal(process.exitCode, 1)
+  t.match(errors, [/Error: Exit prior to setting npm in exit handler/])
+})
+
+t.test('exit handler called - no npm with error', async (t) => {
+  const { exitHandler, errors } = await mockExitHandler(t, { init: false })
+  await exitHandler(err('something happened'))
+  t.equal(process.exitCode, 1)
+  t.match(errors, [/Error: something happened/])
+})
+
+t.test('exit handler called - no npm with error without stack', async (t) => {
+  const { exitHandler, errors } = await mockExitHandler(t, { init: false })
+  await exitHandler(err('something happened', {}, true))
+  t.equal(process.exitCode, 1)
+  t.match(errors, [/something happened/])
 })
 
 t.test('console.log output using --json', async (t) => {

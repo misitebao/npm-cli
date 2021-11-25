@@ -6,6 +6,15 @@ const fsMiniPass = require('fs-minipass')
 const rimraf = require('rimraf')
 const LogFile = require('../../../lib/utils/log-file.js')
 
+t.cleanSnapshot = (path) => {
+  const normalizePath = p => p
+    .replace(/\\+/g, '/')
+    .replace(/\r\n/g, '\n')
+  return normalizePath(path)
+    .replace(new RegExp(normalizePath(process.cwd()), 'g'), '{CWD}')
+    .replace(/:\d+:\d+/g, '')
+}
+
 const last = arr => arr[arr.length - 1]
 const range = (n) => Array.from(Array(n).keys())
 

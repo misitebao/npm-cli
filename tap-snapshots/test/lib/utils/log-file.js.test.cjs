@@ -9,26 +9,26 @@ exports[`test/lib/utils/log-file.js TAP snapshot > must match snapshot 1`] = `
 Array [
   String(
     0 error PREFIX has many errors Error: message
-    0 error PREFIX     at Test.<anonymous> (/Users/lukekarrys/projects/npm/cli/test/lib/utils/log-file.js:253:5)
-    0 error PREFIX     at TapWrap.runInAsyncScope (node:async_hooks:199:9)
-    0 error PREFIX     at Test.cb (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:123:40)
-    0 error PREFIX     at /Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:362:21
-    0 error PREFIX     at Test.main (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:369:7)
-    0 error PREFIX     at TapWrap.runInAsyncScope (node:async_hooks:199:9)
-    0 error PREFIX     at Test.runMain (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/base.js:169:15)
-    0 error PREFIX     at /Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:478:13
-    0 error PREFIX     at TAP.writeSubComment (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:549:5)
-    0 error PREFIX     at Test.<anonymous> (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:477:14) Error: message2
-    0 error PREFIX     at Test.<anonymous> (/Users/lukekarrys/projects/npm/cli/test/lib/utils/log-file.js:254:5)
-    0 error PREFIX     at TapWrap.runInAsyncScope (node:async_hooks:199:9)
-    0 error PREFIX     at Test.cb (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:123:40)
-    0 error PREFIX     at /Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:362:21
-    0 error PREFIX     at Test.main (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:369:7)
-    0 error PREFIX     at TapWrap.runInAsyncScope (node:async_hooks:199:9)
-    0 error PREFIX     at Test.runMain (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/base.js:169:15)
-    0 error PREFIX     at /Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:478:13
-    0 error PREFIX     at TAP.writeSubComment (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:549:5)
-    0 error PREFIX     at Test.<anonymous> (/Users/lukekarrys/projects/npm/cli/node_modules/libtap/lib/test.js:477:14)
+    0 error PREFIX     at Test.<anonymous> ({CWD}/test/lib/utils/log-file.js)
+    0 error PREFIX     at TapWrap.runInAsyncScope (node:async_hooks)
+    0 error PREFIX     at Test.cb ({CWD}/node_modules/libtap/lib/test.js)
+    0 error PREFIX     at {CWD}/node_modules/libtap/lib/test.js
+    0 error PREFIX     at Test.main ({CWD}/node_modules/libtap/lib/test.js)
+    0 error PREFIX     at TapWrap.runInAsyncScope (node:async_hooks)
+    0 error PREFIX     at Test.runMain ({CWD}/node_modules/libtap/lib/base.js)
+    0 error PREFIX     at {CWD}/node_modules/libtap/lib/test.js
+    0 error PREFIX     at TAP.writeSubComment ({CWD}/node_modules/libtap/lib/test.js)
+    0 error PREFIX     at Test.<anonymous> ({CWD}/node_modules/libtap/lib/test.js) Error: message2
+    0 error PREFIX     at Test.<anonymous> ({CWD}/test/lib/utils/log-file.js)
+    0 error PREFIX     at TapWrap.runInAsyncScope (node:async_hooks)
+    0 error PREFIX     at Test.cb ({CWD}/node_modules/libtap/lib/test.js)
+    0 error PREFIX     at {CWD}/node_modules/libtap/lib/test.js
+    0 error PREFIX     at Test.main ({CWD}/node_modules/libtap/lib/test.js)
+    0 error PREFIX     at TapWrap.runInAsyncScope (node:async_hooks)
+    0 error PREFIX     at Test.runMain ({CWD}/node_modules/libtap/lib/base.js)
+    0 error PREFIX     at {CWD}/node_modules/libtap/lib/test.js
+    0 error PREFIX     at TAP.writeSubComment ({CWD}/node_modules/libtap/lib/test.js)
+    0 error PREFIX     at Test.<anonymous> ({CWD}/node_modules/libtap/lib/test.js)
     1 error no prefix
     
   ),
