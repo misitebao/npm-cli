@@ -1,43 +1,35 @@
 const t = require('tap')
-const { resolve, dirname, relative } = require('path')
+const { resolve, dirname } = require('path')
 
 const { load: loadMockNpm } = require('../fixtures/mock-npm.js')
-const mockGlobal = require('../fixtures/mock-globals')
+const mockGlobals = require('../fixtures/mock-globals')
 
 // delete this so that we don't have configs from the fact that it
 // is being run by 'npm test'
 const event = process.env.npm_lifecycle_event
-const eachEnv = (cb) => {
-  for (const [k, v] of Object.entries(process.env).filter(e => /^npm_/.test(e))) {
-    cb(k, v)
-  }
-}
 
-eachEnv((key, value) => {
-  if (key === 'npm_command') {
+for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
+  if (env === 'npm_command') {
     // should only be running this in the 'test' or 'run-script' command!
     // if the lifecycle event is 'test', then it'll be either 'test' or 'run',
     // otherwise it should always be run-script. Of course, it'll be missing
     // if this test is just run directly, which is also acceptable.
     if (event === 'test') {
       t.ok(
-        ['test', 'run-script'].some(i => i === event),
+        ['test', 'run-script'].some(i => i === process.env[env]),
         'should match "npm test" or "npm run test"'
       )
     } else {
-      t.match(process.env[key], /^(run-script|exec)$/)
+      t.match(process.env[env], /^(run-script|exec)$/)
     }
   }
-  delete process.env[key]
-})
-
-const _actualPlatform = process.platform
-const _argv = [...process.argv]
+  delete process.env[env]
+}
 
 t.afterEach(async (t) => {
-  eachEnv((env) => delete process.env[env])
-  process.argv = _argv
-  process.platform = _actualPlatform
+  for (const env of Object.keys(process.env).filter(e => /^npm_/.test(e))) {
+    delete process.env[env]
+  }
 })
 
 t.test('not yet loaded', async t => {
@@ -100,7 +92,7 @@ t.test('npm.load', async t => {
       ['npm:load', /Completed in [0-9.]+ms/],
     ])
 
-    mockGlobal(t, { process: { platform: 'posix' } })
+    mockGlobals(t, { process: { platform: 'posix' } })
     t.equal(resolve(npm.cache), resolve(cache), 'cache is cache')
     const newCache = t.testdir()
     npm.cache = newCache
@@ -137,7 +129,7 @@ t.test('npm.load', async t => {
     t.equal(npm.bin, npm.globalBin, 'bin is global bin after prefix setter')
     t.not(npm.bin, npm.localBin, 'bin is not local bin after prefix setter')
 
-    mockGlobal(t, { process: { platform: 'win32' } })
+    mockGlobals(t, { process: { platform: 'win32' } })
     t.equal(npm.bin, npm.globalBin, 'bin is global bin in windows mode')
     t.equal(npm.dir, npm.globalDir, 'dir is global dir in windows mode')
 
@@ -147,7 +139,9 @@ t.test('npm.load', async t => {
   })
 
   t.test('forceful loading', async t => {
-    process.argv = [...process.argv, '--force', '--color', 'always']
+    mockGlobals(t, {
+      'process.argv': [...process.argv, '--force', '--color', 'always'],
+    })
     const { logs } = await loadMockNpm(t)
     t.match(logs.warn, [
       [
@@ -158,25 +152,22 @@ t.test('npm.load', async t => {
   })
 
   t.test('node is a symlink', async t => {
-    const node = _actualPlatform === 'win32' ? 'node.exe' : 'node'
-    process.argv = [
-      node,
-      process.argv[1],
-      '--usage',
-      '--scope=foo',
-      'token',
-      'revoke',
-      'blergggg',
-    ]
-
+    const node = process.platform === 'win32' ? 'node.exe' : 'node'
+    mockGlobals(t, {
+      'process.argv': [
+        node,
+        process.argv[1],
+        '--usage',
+        '--scope=foo',
+        'token',
+        'revoke',
+        'blergggg',
+      ],
+    })
     const { npm, logs, outputs, prefix } = await loadMockNpm(t, {
       testdir: {
-        '.npmrc': 'foo = bar',
         bin: t.fixture('symlink', dirname(process.execPath)),
       },
-      config: ({ prefix }) => ({
-        userconfig: `./${relative(__dirname, prefix)}/.npmrc`,
-      }),
       globals: ({ prefix }) => ({
         'process.env.PATH': resolve(prefix, 'bin'),
       }),
@@ -237,13 +228,15 @@ t.test('npm.load', async t => {
   })
 
   t.test('--no-workspaces with --workspace', async t => {
-    process.argv = [
-      process.execPath,
-      process.argv[1],
-      '--color', 'false',
-      '--workspaces', 'false',
-      '--workspace', 'a',
-    ]
+    mockGlobals(t, {
+      'process.argv': [
+        process.execPath,
+        process.argv[1],
+        '--color', 'false',
+        '--workspaces', 'false',
+        '--workspace', 'a',
+      ],
+    })
     const { npm } = await loadMockNpm(t, {
       load: false,
       testdir: {
@@ -270,12 +263,14 @@ t.test('npm.load', async t => {
   })
 
   t.test('workspace-aware configs and commands', async t => {
-    process.argv = [
-      process.execPath,
-      process.argv[1],
-      '--color', 'false',
-      '--workspaces', 'true',
-    ]
+    mockGlobals(t, {
+      'process.argv': [
+        process.execPath,
+        process.argv[1],
+        '--color', 'false',
+        '--workspaces', 'true',
+      ],
+    })
     const { npm, outputs } = await loadMockNpm(t, {
       testdir: {
         packages: {
@@ -324,15 +319,17 @@ t.test('npm.load', async t => {
   })
 
   t.test('workspaces in global mode', async t => {
-    process.argv = [
-      process.execPath,
-      process.argv[1],
-      '--color',
-      'false',
-      '--workspaces',
-      '--global',
-      'true',
-    ]
+    mockGlobals(t, {
+      'process.argv': [
+        process.execPath,
+        process.argv[1],
+        '--color',
+        'false',
+        '--workspaces',
+        '--global',
+        'true',
+      ],
+    })
     const { npm } = await loadMockNpm(t, {
       testdir: {
         packages: {
@@ -370,42 +367,48 @@ t.test('npm.load', async t => {
 
 t.test('set process.title', async t => {
   t.test('basic title setting', async t => {
-    process.argv = [
-      process.execPath,
-      process.argv[1],
-      '--usage',
-      '--scope=foo',
-      'ls',
-    ]
+    mockGlobals(t, {
+      'process.argv': [
+        process.execPath,
+        process.argv[1],
+        '--usage',
+        '--scope=foo',
+        'ls',
+      ],
+    })
     const { npm } = await loadMockNpm(t)
     t.equal(npm.title, 'npm ls')
     t.equal(process.title, 'npm ls')
   })
 
   t.test('do not expose token being revoked', async t => {
-    process.argv = [
-      process.execPath,
-      process.argv[1],
-      '--usage',
-      '--scope=foo',
-      'token',
-      'revoke',
-      'deadbeefcafebad',
-    ]
+    mockGlobals(t, {
+      'process.argv': [
+        process.execPath,
+        process.argv[1],
+        '--usage',
+        '--scope=foo',
+        'token',
+        'revoke',
+        'deadbeefcafebad',
+      ],
+    })
     const { npm } = await loadMockNpm(t)
     t.equal(npm.title, 'npm token revoke ***')
     t.equal(process.title, 'npm token revoke ***')
   })
 
   t.test('do show *** unless a token is actually being revoked', async t => {
-    process.argv = [
-      process.execPath,
-      process.argv[1],
-      '--usage',
-      '--scope=foo',
-      'token',
-      'revoke',
-    ]
+    mockGlobals(t, {
+      'process.argv': [
+        process.execPath,
+        process.argv[1],
+        '--usage',
+        '--scope=foo',
+        'token',
+        'revoke',
+      ],
+    })
     const { npm } = await loadMockNpm(t)
     t.equal(npm.title, 'npm token revoke')
     t.equal(process.title, 'npm token revoke')
@@ -492,7 +495,7 @@ t.test('output clears progress and console.logs the message', async t => {
   t.plan(2)
   let showingProgress = true
   const logs = []
-  mockGlobal(t, {
+  mockGlobals(t, {
     'console.log': (...args) => {
       t.equal(showingProgress, false, 'should not be showing progress right now')
       logs.push(args)
