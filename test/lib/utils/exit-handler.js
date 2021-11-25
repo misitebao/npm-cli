@@ -36,13 +36,13 @@ t.cleanSnapshot = (path) => {
 // nerf itself, thinking global.process is broken or gone.
 mockGlobals(t, {
   process: Object.assign(new EventEmitter(), {
+    ...pick(process, 'execPath', 'stdout', 'stderr', 'cwd', 'env'),
     exit: (code) => {
       process.exitCode = code || process.exitCode || 0
       process.emit('exit', process.exitCode)
     },
     argv: ['/node', ...process.argv.slice(1)],
     version: 'v1.0.0',
-    ...pick(process, 'execPath', 'stdout', 'stderr', 'cwd', 'env'),
   }),
 }, { replace: true })
 

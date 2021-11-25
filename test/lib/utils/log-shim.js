@@ -49,6 +49,7 @@ t.test('has properties', (t) => {
     'disableUnicode',
     'enableProgress',
     'disableProgress',
+    'progressEnabled',
     'clearProgress',
     'showProgress',
     'newItem',

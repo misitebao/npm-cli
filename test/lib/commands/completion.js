@@ -13,9 +13,7 @@ const loadMockCompletion = async (t, o = {}) => {
   const { globals, windows, ...options } = o
   let resetGlobals = {}
   if (globals) {
-    resetGlobals = {
-      ...mockGlobals(t, globals).reset,
-    }
+    resetGlobals = mockGlobals(t, globals).reset
   }
   const res = await _loadMockNpm(t, {
     mocks: {

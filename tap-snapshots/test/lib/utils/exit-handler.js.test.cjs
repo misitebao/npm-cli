@@ -11,25 +11,26 @@ exports[`test/lib/utils/exit-handler.js TAP handles unknown error with logs and 
 17 timing npm:load:configload Completed in {TIME}ms
 18 timing npm:load:setTitle Completed in {TIME}ms
 20 timing npm:load:display Completed in {TIME}ms
-21 timing npm:load:logFile Completed in {TIME}ms
-22 timing npm:load:timers Completed in {TIME}ms
-23 timing npm:load:configScope Completed in {TIME}ms
-24 timing npm:load:projectScope Completed in {TIME}ms
-25 timing npm:load Completed in {TIME}ms
-26 verbose stack Error: Unknown error
-27 verbose cwd {CWD}
-28 verbose Foo 1.0.0
-29 verbose argv "/node" "{CWD}/test/lib/utils/exit-handler.js"
-30 verbose node v1.0.0
-31 verbose npm v1.0.0
-32 error code ECODE
-33 error ERR SUMMARY Unknown error
-34 error ERR DETAIL Unknown error
-35 verbose exit 1
-36 timing npm Completed in {TIME}ms
-37 verbose code 1
-38 error A complete log of this run can be found in:
-38 error {CWD}/test/lib/utils/tap-testdir-exit-handler-handles-unknown-error-with-logs-and-debug-file/cache/_logs/{TIME}-debug-0.log
+21 silly logfile start cleaning logs
+22 timing npm:load:logFile Completed in {TIME}ms
+23 timing npm:load:timers Completed in {TIME}ms
+24 timing npm:load:configScope Completed in {TIME}ms
+25 timing npm:load:projectScope Completed in {TIME}ms
+26 timing npm:load Completed in {TIME}ms
+27 verbose stack Error: Unknown error
+28 verbose cwd {CWD}
+29 verbose Foo 1.0.0
+30 verbose argv "/node" "{CWD}/test/lib/utils/exit-handler.js"
+31 verbose node v1.0.0
+32 verbose npm v1.0.0
+33 error code ECODE
+34 error ERR SUMMARY Unknown error
+35 error ERR DETAIL Unknown error
+36 verbose exit 1
+37 timing npm Completed in {TIME}ms
+38 verbose code 1
+39 error A complete log of this run can be found in:
+39 error {CWD}/test/lib/utils/tap-testdir-exit-handler-handles-unknown-error-with-logs-and-debug-file/cache/_logs/{TIME}-debug-0.log
 `
 
 exports[`test/lib/utils/exit-handler.js TAP handles unknown error with logs and debug file > logs 1`] = `
@@ -38,6 +39,7 @@ timing config:load Completed in {TIME}ms
 timing npm:load:configload Completed in {TIME}ms
 timing npm:load:setTitle Completed in {TIME}ms
 timing npm:load:display Completed in {TIME}ms
+silly logfile start cleaning logs
 timing npm:load:logFile Completed in {TIME}ms
 timing npm:load:timers Completed in {TIME}ms
 timing npm:load:configScope Completed in {TIME}ms

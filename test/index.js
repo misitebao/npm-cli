@@ -1,6 +1,7 @@
 const t = require('tap')
 const index = require.resolve('../index.js')
 const packageIndex = require.resolve('../')
+
 t.equal(index, packageIndex, 'index is main package require() export')
 t.throws(() => require(index), {
   message: 'The programmatic API was removed in npm v8.0.0',
