@@ -17,7 +17,7 @@ t.test('posix', (t) => {
 t.test('win32', (t) => {
   mockGlobal(t, { 'process.platform': 'win32' })
 
-  mockGlobal(t, { 'process.env.TERM': { TERM: 'dumb', MSYSTEM: undefined } })
+  mockGlobal(t, { 'process.env': { TERM: 'dumb', MSYSTEM: undefined } })
   t.equal(isWindowsBash(), false, 'false when not mingw or cygwin')
 
   mockGlobal(t, { 'process.env.TERM': 'cygwin' })
