@@ -101,7 +101,7 @@ t.test('logged argv is sanitized', async t => {
   })
 
   await cli(process)
-  t.equal(process.title, 'npm version https://username:***@npmjs.org/test_url_with_a_password')
+  t.ok(process.title.startsWith('npm version https://username:***@npmjs.org'))
   t.strictSame(logs.verbose.filter(([p]) => p !== 'logfile'), [
     [
       'cli',

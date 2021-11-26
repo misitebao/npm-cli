@@ -13,7 +13,7 @@ const cleanErr = (message) => {
   const err = new Error(message)
   err.stack = err.stack
     .split('\n')
-    .map((l, i) => l.replace(/(\s+at\s).*/, `$1stack trace line ${i}`))
+    .map((l, i) => l.replace(/^(\s+at\s).*/, `$1stack trace line ${i}`))
     .join('\n')
   return err
 }

@@ -120,7 +120,7 @@ t.test('handles unknown error with logs and debug file', async (t) => {
 
   t.equal(process.exitCode, 1)
   logs.forEach((l, i) => {
-    t.match(debugContent, format(i, ...l).trim(), 'log appears in debug file')
+    t.match(debugContent.trim(), format(i, ...l).trim(), 'log appears in debug file')
   })
   const lastLog = debugContent
     .split('\n')
