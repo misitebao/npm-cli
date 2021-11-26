@@ -1,4 +1,5 @@
 const t = require('tap')
+const os = require('os')
 const EventEmitter = require('events')
 const { format } = require('../../../lib/utils/log-file')
 const { load: loadMockNpm } = require('../../fixtures/mock-npm')
@@ -119,9 +120,13 @@ t.test('handles unknown error with logs and debug file', async (t) => {
   const debugContent = await debugFile()
 
   t.equal(process.exitCode, 1)
-  logs.forEach((l, i) => {
-    t.match(debugContent.trim(), format(i, ...l).trim(), 'log appears in debug file')
+  logs.forEach((logItem, i) => {
+    const logLines = format(i, ...logItem).trim().split(os.EOL)
+    logLines.forEach((line) => {
+      t.match(debugContent.trim(), line, 'log appears in debug file')
+    })
   })
+
   const lastLog = debugContent
     .split('\n')
     .reduce((__, l) => parseInt(l.match(/^(\d+)\s/)[1]))
