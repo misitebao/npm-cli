@@ -1,11 +1,8 @@
 const t = require('tap')
 const mockGlobal = require('../../fixtures/mock-globals.js')
 
-const isWindowsBash = () => {
-  delete require.cache[require.resolve('../../../lib/utils/is-windows-bash.js')]
-  delete require.cache[require.resolve('../../../lib/utils/is-windows.js')]
-  return require('../../../lib/utils/is-windows-bash.js')
-}
+const isWindowsBash = () =>
+  t.mock('../../../lib/utils/is-windows-bash.js')
 
 t.test('posix', (t) => {
   mockGlobal(t, { 'process.platform': 'posix' })
@@ -16,6 +13,8 @@ t.test('posix', (t) => {
 
 t.test('win32', (t) => {
   mockGlobal(t, { 'process.platform': 'win32' })
+
+  mockGlobal(t, { 'process.env.TERM': 'dumb' })
   t.equal(isWindowsBash(), false, 'false when not mingw or cygwin')
 
   mockGlobal(t, { 'process.env.TERM': 'cygwin' })
