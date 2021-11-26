@@ -2,9 +2,9 @@ const t = require('tap')
 const path = require('path')
 const { load: _loadMockNpm } = require('../../fixtures/mock-npm.js')
 const mockGlobals = require('../../fixtures/mock-globals.js')
+const { cleanCwd, cleanDate } = require('../../fixtures/clean-snapshot.js')
 
-t.cleanSnapshot = p =>
-  p.replace(new RegExp(process.cwd(), 'g'), '{CWD}')
+t.cleanSnapshot = p => cleanDate(cleanCwd(p))
 
 mockGlobals(t, {
   process: {

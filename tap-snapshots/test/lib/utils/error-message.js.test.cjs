@@ -255,7 +255,7 @@ Object {
   "summary": Array [
     Array [
       "notsup",
-      "Unsupported platform for lodash@1.0.0: wanted {\\"os\\":\\"!yours,mine\\",\\"arch\\":\\"x867,x5309\\"} (current: {\\"os\\":\\"posix\\",\\"arch\\":\\"x64\\"})",
+      "Unsupported platform for lodash@1.0.0: wanted {/"os/":/"!yours,mine/",/"arch/":/"x867,x5309/"} (current: {/"os/":/"posix/",/"arch/":/"x64/"})",
     ],
   ],
 }
@@ -277,7 +277,7 @@ Object {
   "summary": Array [
     Array [
       "notsup",
-      "Unsupported platform for lodash@1.0.0: wanted {\\"os\\":\\"!yours\\",\\"arch\\":\\"x420\\"} (current: {\\"os\\":\\"posix\\",\\"arch\\":\\"x64\\"})",
+      "Unsupported platform for lodash@1.0.0: wanted {/"os/":/"!yours/",/"arch/":/"x420/"} (current: {/"os/":/"posix/",/"arch/":/"x64/"})",
     ],
   ],
 }
@@ -502,7 +502,12 @@ Object {
 `
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":false,"loaded":true,"cachePath":false,"cacheDest":false} > must match snapshot 2`] = `
-Array []
+Array [
+  Array [
+    "logfile",
+    "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-true-cachePath-false-cacheDest-false-/cache/_logs/{DATE}-debug-0.log",
+  ],
+]
 `
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":false,"loaded":true,"cachePath":false,"cacheDest":true} > must match snapshot 1`] = `
@@ -526,6 +531,10 @@ Object {
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":false,"loaded":true,"cachePath":false,"cacheDest":true} > must match snapshot 2`] = `
 Array [
+  Array [
+    "logfile",
+    "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-true-cachePath-false-cacheDest-true-/cache/_logs/{DATE}-debug-0.log",
+  ],
   Array [
     "dummy stack trace",
   ],
@@ -554,6 +563,10 @@ Object {
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":false,"loaded":true,"cachePath":true,"cacheDest":false} > must match snapshot 2`] = `
 Array [
   Array [
+    "logfile",
+    "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-true-cachePath-true-cacheDest-false-/cache/_logs/{DATE}-debug-0.log",
+  ],
+  Array [
     "dummy stack trace",
   ],
 ]
@@ -580,6 +593,10 @@ Object {
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":false,"loaded":true,"cachePath":true,"cacheDest":true} > must match snapshot 2`] = `
 Array [
+  Array [
+    "logfile",
+    "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-false-loaded-true-cachePath-true-cacheDest-true-/cache/_logs/{DATE}-debug-0.log",
+  ],
   Array [
     "dummy stack trace",
   ],
@@ -753,7 +770,12 @@ Object {
 `
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":true,"loaded":true,"cachePath":false,"cacheDest":false} > must match snapshot 2`] = `
-Array []
+Array [
+  Array [
+    "logfile",
+    "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-true-cachePath-false-cacheDest-false-/cache/_logs/{DATE}-debug-0.log",
+  ],
+]
 `
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":true,"loaded":true,"cachePath":false,"cacheDest":true} > must match snapshot 1`] = `
@@ -787,7 +809,12 @@ Object {
 `
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":true,"loaded":true,"cachePath":false,"cacheDest":true} > must match snapshot 2`] = `
-Array []
+Array [
+  Array [
+    "logfile",
+    "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-true-cachePath-false-cacheDest-true-/cache/_logs/{DATE}-debug-0.log",
+  ],
+]
 `
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":true,"loaded":true,"cachePath":true,"cacheDest":false} > must match snapshot 1`] = `
@@ -821,7 +848,12 @@ Object {
 `
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":true,"loaded":true,"cachePath":true,"cacheDest":false} > must match snapshot 2`] = `
-Array []
+Array [
+  Array [
+    "logfile",
+    "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-true-cachePath-true-cacheDest-false-/cache/_logs/{DATE}-debug-0.log",
+  ],
+]
 `
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":true,"loaded":true,"cachePath":true,"cacheDest":true} > must match snapshot 1`] = `
@@ -855,7 +887,12 @@ Object {
 `
 
 exports[`test/lib/utils/error-message.js TAP eacces/eperm {"windows":true,"loaded":true,"cachePath":true,"cacheDest":true} > must match snapshot 2`] = `
-Array []
+Array [
+  Array [
+    "logfile",
+    "{CWD}/test/lib/utils/tap-testdir-error-message-eacces-eperm--windows-true-loaded-true-cachePath-true-cacheDest-true-/cache/_logs/{DATE}-debug-0.log",
+  ],
+]
 `
 
 exports[`test/lib/utils/error-message.js TAP enoent without a file > must match snapshot 1`] = `
@@ -863,7 +900,7 @@ Object {
   "detail": Array [
     Array [
       "enoent",
-      "This is related to npm not being able to find a file.\\n",
+      "This is related to npm not being able to find a file./n",
     ],
   ],
   "summary": Array [

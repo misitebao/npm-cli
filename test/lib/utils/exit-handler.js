@@ -3,6 +3,7 @@ const EventEmitter = require('events')
 const { format } = require('../../../lib/utils/log-file')
 const { load: loadMockNpm } = require('../../fixtures/mock-npm')
 const mockGlobals = require('../../fixtures/mock-globals')
+const { cleanCwd, cleanDate } = require('../../fixtures/clean-snapshot')
 
 const pick = (obj, ...keys) => keys.reduce((acc, key) => {
   acc[key] = obj[key]
@@ -18,17 +19,10 @@ t.formatSnapshot = (obj) => {
   return obj
 }
 
-t.cleanSnapshot = (path) => {
-  const normalizePath = p => p
-    .replace(/\\+/g, '/')
-    .replace(/\r\n/g, '\n')
-  return normalizePath(path)
-    .replace(new RegExp(normalizePath(process.cwd()), 'g'), '{CWD}')
-    // Config loading is dependent on env so strip those from snapshots
-    .replace(/.*timing config:load:.*\n/gm, '')
-    .replace(/Completed in \d+ms/g, 'Completed in {TIME}ms')
-    .replace(/(\/)[\d\-_ZT]*(-debug-\d+\.log)/g, '$1{TIME}$2')
-}
+t.cleanSnapshot = (path) => cleanDate(cleanCwd(path))
+// Config loading is dependent on env so strip those from snapshots
+  .replace(/.*timing config:load:.*\n/gm, '')
+  .replace(/(Completed in )\d+(ms)/g, '$1{TIME}$2')
 
 // cut off process from script so that it won't quit the test runner
 // while trying to run through the myriad of cases.  need to make it
@@ -377,7 +371,7 @@ t.test('verbose logs replace info on err props', async t => {
   await exitHandler(err('Error with code type number', properties))
   t.equal(process.exitCode, 1)
   t.match(
-    logs.verbose,
+    logs.verbose.filter(([p]) => p !== 'logfile'),
     keys.map((k) => [k, `${k}-https://user:***@registry.npmjs.org/`]),
     'all special keys get replaced'
   )

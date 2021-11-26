@@ -5,14 +5,17 @@ const os = require('os')
 const fsMiniPass = require('fs-minipass')
 const rimraf = require('rimraf')
 const LogFile = require('../../../lib/utils/log-file.js')
+const { cleanCwd } = require('../../fixtures/clean-snapshot')
 
-t.cleanSnapshot = (path) => {
-  const normalizePath = p => p
-    .replace(/\\+/g, '/')
-    .replace(/\r\n/g, '\n')
-  return normalizePath(path)
-    .replace(new RegExp(normalizePath(process.cwd()), 'g'), '{CWD}')
-    .replace(/:\d+:\d+/g, '')
+t.cleanSnapshot = (path) => cleanCwd(path)
+
+const cleanErr = (message) => {
+  const err = new Error(message)
+  err.stack = err.stack
+    .split('\n')
+    .map((l, i) => l.replace(/(\s+at\s).*/, `$1stack trace line ${i}`))
+    .join('\n')
+  return err
 }
 
 const last = arr => arr[arr.length - 1]
@@ -253,18 +256,45 @@ t.test('clean', async t => {
 t.test('snapshot', async t => {
   const { logFile, readLogs } = loadLogFile()
 
+  logFile.log('error', '', 'no prefix')
+  logFile.log('error', 'prefix', 'with prefix')
+  logFile.log('error', 'prefix', 1, 2, 3)
+
+  const nestedObj = { obj: { with: { many: { props: 1 } } } }
+  logFile.log('verbose', '', nestedObj)
+  logFile.log('verbose', '', JSON.stringify(nestedObj))
+  logFile.log('verbose', '', JSON.stringify(nestedObj, null, 2))
+
+  const arr = ['test', 'with', 'an', 'array']
+  logFile.log('verbose', '', arr)
+  logFile.log('verbose', '', JSON.stringify(arr))
+  logFile.log('verbose', '', JSON.stringify(arr, null, 2))
+
+  const nestedArr = ['test', ['with', ['an', ['array']]]]
+  logFile.log('verbose', '', nestedArr)
+  logFile.log('verbose', '', JSON.stringify(nestedArr))
+  logFile.log('verbose', '', JSON.stringify(nestedArr, null, 2))
+
+  // XXX: multiple errors are hard to parse visually
+  // the second error should start on a newline
   logFile.log(...[
     'error',
-    'PREFIX',
+    'pre',
     'has',
     'many',
     'errors',
-    new Error('message'),
-    new Error('message2'),
+    cleanErr('message'),
+    cleanErr('message2'),
   ])
 
-  logFile.log('error', '', 'no prefix')
+  const err = new Error('message')
+  delete err.stack
+  logFile.log(...[
+    'error',
+    'nostack',
+    err,
+  ])
 
   const logs = await readLogs()
-  t.matchSnapshot(logs.map(l => l.content))
+  t.matchSnapshot(logs.map(l => l.content).join('\n'))
 })

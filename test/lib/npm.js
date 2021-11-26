@@ -180,10 +180,8 @@ t.test('npm.load', async t => {
       ...logs.timing.filter(([p]) => p === 'npm:load'),
     ], [
       ['npm:load:whichnode', /Completed in [0-9.]+ms/],
-      [
-        'node symlink',
-        resolve(prefix, 'bin', node),
-      ],
+      ['node symlink', resolve(prefix, 'bin', node)],
+      ['logfile', /.*-debug-0.log/],
       ['npm:load', /Completed in [0-9.]+ms/],
     ])
     t.equal(process.execPath, resolve(prefix, 'bin', node))

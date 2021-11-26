@@ -30,7 +30,7 @@ const cliMock = async (t, mocks) => {
     outputs,
     exitHandlerCalled: () => exitHandlerArgs,
     exitHandlerNpm: () => npm,
-    logs: () => logs.filter(([l]) => ['verbose', 'info'].includes(l)),
+    logs,
   }
 }
 
@@ -47,17 +47,19 @@ t.test('print the version, and treat npm_g as npm -g', async t => {
   await cli(process)
 
   t.strictSame(process.argv, ['node', 'npm', '-g', '-v'], 'system process.argv was rewritten')
-  t.strictSame(logs(), [
-    ['verbose', 'cli', process.argv],
-    ['info', 'using', 'npm@%s', Npm.version],
-    ['info', 'using', 'node@%s', process.version],
+  t.strictSame(logs.verbose.filter(([p]) => p !== 'logfile'), [
+    ['cli', process.argv],
+  ])
+  t.strictSame(logs.info, [
+    ['using', 'npm@%s', Npm.version],
+    ['using', 'node@%s', process.version],
   ])
   t.strictSame(outputs, [[Npm.version]])
   t.strictSame(exitHandlerCalled(), [])
 })
 
 t.test('calling with --versions calls npm version with no args', async t => {
-  t.plan(5)
+  t.plan(6)
   mockGlobals(t, {
     'process.argv': ['node', 'npm', 'install', 'or', 'whatever', '--versions'],
   })
@@ -71,10 +73,12 @@ t.test('calling with --versions calls npm version with no args', async t => {
 
   await cli(process)
   t.equal(process.title, 'npm install or whatever')
-  t.strictSame(logs(), [
-    ['verbose', 'cli', process.argv],
-    ['info', 'using', 'npm@%s', Npm.version],
-    ['info', 'using', 'node@%s', process.version],
+  t.strictSame(logs.verbose.filter(([p]) => p !== 'logfile'), [
+    ['cli', process.argv],
+  ])
+  t.strictSame(logs.info, [
+    ['using', 'npm@%s', Npm.version],
+    ['using', 'node@%s', process.version],
   ])
 
   t.strictSame(outputs, [])
@@ -98,14 +102,15 @@ t.test('logged argv is sanitized', async t => {
 
   await cli(process)
   t.equal(process.title, 'npm version https://username:***@npmjs.org/test_url_with_a_password')
-  t.strictSame(logs(), [
+  t.strictSame(logs.verbose.filter(([p]) => p !== 'logfile'), [
     [
-      'verbose',
       'cli',
       ['node', 'npm', 'version', 'https://username:***@npmjs.org/test_url_with_a_password'],
     ],
-    ['info', 'using', 'npm@%s', Npm.version],
-    ['info', 'using', 'node@%s', process.version],
+  ])
+  t.strictSame(logs.info, [
+    ['using', 'npm@%s', Npm.version],
+    ['using', 'node@%s', process.version],
   ])
 })
 
