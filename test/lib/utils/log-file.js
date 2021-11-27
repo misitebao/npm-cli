@@ -168,84 +168,80 @@ t.test('turns off', async t => {
   t.equal(logs[0].logs[0], '0 error test')
 })
 
-t.skip('clean', async t => {
-  t.test('cleans logs', async t => {
-    const logsMax = 5
-    const oldId = LogFile.logId()
-    const { readLogs } = await loadLogFile({
-      logsMax,
-    }, {
-      testdir: range(10).reduce((acc, i) => {
-        acc[LogFile.fileName(oldId, i)] = 'hello'
-        return acc
-      }, {}),
-    })
-
-    const logs = await readLogs()
-
-    t.equal(logs.length, logsMax + 1)
+t.skip('cleans logs', async t => {
+  const logsMax = 5
+  const oldId = LogFile.logId()
+  const { readLogs } = await loadLogFile({
+    logsMax,
+  }, {
+    testdir: range(10).reduce((acc, i) => {
+      acc[LogFile.fileName(oldId, i)] = 'hello'
+      return acc
+    }, {}),
   })
 
-  t.test('doesnt need to clean', async t => {
-    const logsMax = 20
-    const oldLogs = 10
-    const oldId = LogFile.logId()
-    const { readLogs } = await loadLogFile({
-      logsMax,
-    }, {
-      testdir: range(oldLogs).reduce((acc, i) => {
-        acc[LogFile.fileName(oldId, i)] = 'hello'
-        return acc
-      }, {}),
-    })
+  const logs = await readLogs()
+  t.equal(logs.length, logsMax + 1)
+})
 
-    const logs = await readLogs()
-
-    t.equal(logs.length, oldLogs + 1)
+t.test('doesnt need to clean', async t => {
+  const logsMax = 20
+  const oldLogs = 10
+  const oldId = LogFile.logId()
+  const { readLogs } = await loadLogFile({
+    logsMax,
+  }, {
+    testdir: range(oldLogs).reduce((acc, i) => {
+      acc[LogFile.fileName(oldId, i)] = 'hello'
+      return acc
+    }, {}),
   })
 
-  t.test('glob error', async t => {
-    const { readLogs } = await loadLogFile({
-      logsMax: 5,
-    }, {
-      mocks: {
-        glob: () => {
-          throw new Error('bad glob')
-        },
+  const logs = await readLogs()
+  t.equal(logs.length, oldLogs + 1)
+})
+
+t.test('glob error', async t => {
+  const { readLogs } = await loadLogFile({
+    logsMax: 5,
+  }, {
+    mocks: {
+      glob: () => {
+        throw new Error('bad glob')
       },
-    })
-
-    const logs = await readLogs()
-    t.match(last(logs).content, /error cleaning log files .* bad glob/)
+    },
   })
 
-  t.test('rimraf error', async t => {
-    const logsMax = 5
-    const oldLogs = 10
-    const oldId = LogFile.logId()
-    let count = 0
-    const { readLogs } = await loadLogFile({
-      logsMax,
-    }, {
-      testdir: range(oldLogs).reduce((acc, i) => {
-        acc[LogFile.fileName(oldId, i)] = 'hello'
-        return acc
-      }, {}),
-      mocks: {
-        rimraf: (...args) => {
-          if (count >= 3) {
-            throw new Error('bad rimraf')
-          }
-          count++
-          return rimraf(...args)
-        },
+  const logs = await readLogs()
+  t.match(last(logs).content, /error cleaning log files .* bad glob/)
+})
+
+t.test('rimraf error', async t => {
+  const logsMax = 5
+  const oldLogs = 10
+  const oldId = LogFile.logId()
+  let count = 0
+  const { readLogs } = await loadLogFile({
+    logsMax,
+  }, {
+    testdir: range(oldLogs).reduce((acc, i) => {
+      acc[LogFile.fileName(oldId, i)] = 'hello'
+      return acc
+    }, {}),
+    mocks: {
+      rimraf: (...args) => {
+        if (count >= 3) {
+          throw new Error('bad rimraf')
+        }
+        count++
+        return rimraf(...args)
       },
-    })
-
-    const logs = await readLogs()
-    t.equal(logs.length, oldLogs - 3 + 1)
-    t.match(last(logs).content, /error removing log file .* bad rimraf/)
+    },
   })
+
+  const logs = await readLogs()
+  t.equal(logs.length, oldLogs - 3 + 1)
+  t.match(last(logs).content, /error removing log file .* bad rimraf/)
 })
 
 t.test('snapshot', async t => {
