@@ -168,7 +168,7 @@ t.test('turns off', async t => {
   t.equal(logs[0].logs[0], '0 error test')
 })
 
-t.test('clean', async t => {
+t.skip('clean', async t => {
   t.test('cleans logs', async t => {
     const logsMax = 5
     const oldId = LogFile.logId()
