@@ -21,18 +21,17 @@ const cleanErr = (message) => {
 const last = arr => arr[arr.length - 1]
 const range = (n) => Array.from(Array(n).keys())
 
-const loadLogFile = (options, { buffer = [], mocks, testdir = {} } = {}) => {
+const loadLogFile = async (options, { buffer = [], mocks, testdir = {} } = {}) => {
   const root = t.testdir(testdir)
   const MockLogFile = t.mock('../../../lib/utils/log-file.js', mocks)
   const logFile = new MockLogFile(options)
   buffer.forEach((b) => logFile.log(...b))
-  const cleanLogs = logFile.load({ dir: root, ...options })
+  await logFile.load({ dir: root, ...options })
   t.teardown(() => logFile.off())
   return {
     root,
     logFile,
     LogFile,
-    cleanLogs,
     readLogs: async () => {
       const logDir = await fs.readdir(root)
       return Promise.all(logDir.map(async (filename) => {
@@ -51,7 +50,7 @@ const loadLogFile = (options, { buffer = [], mocks, testdir = {} } = {}) => {
 
 t.test('init', async t => {
   const maxLogsPerFile = 10
-  const { root, logFile, readLogs } = loadLogFile({
+  const { root, logFile, readLogs } = await loadLogFile({
     maxLogsPerFile,
     maxFilesPerProcess: 20,
   }, {
@@ -88,7 +87,7 @@ t.test('init', async t => {
 t.test('max files per process', async t => {
   const maxLogsPerFile = 10
   const maxFilesPerProcess = 5
-  const { logFile, readLogs } = loadLogFile({
+  const { logFile, readLogs } = await loadLogFile({
     maxLogsPerFile,
     maxFilesPerProcess,
   })
@@ -108,7 +107,7 @@ t.test('max files per process', async t => {
 
 t.test('stream error', async t => {
   let times = 0
-  const { logFile, readLogs } = loadLogFile({
+  const { logFile, readLogs } = await loadLogFile({
     maxLogsPerFile: 1,
     maxFilesPerProcess: 99,
   }, {
@@ -136,7 +135,7 @@ t.test('stream error', async t => {
 })
 
 t.test('initial stream error', async t => {
-  const { logFile, readLogs } = loadLogFile({}, {
+  const { logFile, readLogs } = await loadLogFile({}, {
     mocks: {
       'fs-minipass': {
         WriteStreamSync: class {
@@ -157,7 +156,7 @@ t.test('initial stream error', async t => {
 })
 
 t.test('turns off', async t => {
-  const { logFile, readLogs } = loadLogFile()
+  const { logFile, readLogs } = await loadLogFile()
 
   logFile.log('error', 'test')
   logFile.off()
@@ -173,7 +172,7 @@ t.skip('clean', async t => {
   t.test('cleans logs', async t => {
     const logsMax = 5
     const oldId = LogFile.logId()
-    const { cleanLogs, readLogs } = loadLogFile({
+    const { readLogs } = await loadLogFile({
       logsMax,
     }, {
       testdir: range(10).reduce((acc, i) => {
@@ -182,7 +181,6 @@ t.skip('clean', async t => {
       }, {}),
     })
 
-    await cleanLogs
     const logs = await readLogs()
 
     t.equal(logs.length, logsMax + 1)
@@ -192,7 +190,7 @@ t.skip('clean', async t => {
     const logsMax = 20
     const oldLogs = 10
     const oldId = LogFile.logId()
-    const { cleanLogs, readLogs } = loadLogFile({
+    const {  readLogs } = await loadLogFile({
       logsMax,
     }, {
       testdir: range(oldLogs).reduce((acc, i) => {
@@ -201,14 +199,13 @@ t.skip('clean', async t => {
       }, {}),
     })
 
-    await cleanLogs
     const logs = await readLogs()
 
     t.equal(logs.length, oldLogs + 1)
   })
 
   t.test('glob error', async t => {
-    const { cleanLogs, readLogs } = loadLogFile({
+    const { cleanLogs, readLogs } = await loadLogFile({
       logsMax: 5,
     }, {
       mocks: {
@@ -218,7 +215,6 @@ t.skip('clean', async t => {
       },
     })
 
-    await cleanLogs
     const logs = await readLogs()
     t.match(last(logs).content, /error cleaning log files .* bad glob/)
   })
@@ -228,7 +224,7 @@ t.skip('clean', async t => {
     const oldLogs = 10
     const oldId = LogFile.logId()
     let count = 0
-    const { cleanLogs, readLogs } = loadLogFile({
+    const { readLogs } = await loadLogFile({
       logsMax,
     }, {
       testdir: range(oldLogs).reduce((acc, i) => {
@@ -246,7 +242,6 @@ t.skip('clean', async t => {
       },
     })
 
-    await cleanLogs
     const logs = await readLogs()
     t.equal(logs.length, oldLogs - 3 + 1)
     t.match(last(logs).content, /error removing log file .* bad rimraf/)
@@ -254,7 +249,7 @@ t.skip('clean', async t => {
 })
 
 t.test('snapshot', async t => {
-  const { logFile, readLogs } = loadLogFile()
+  const { logFile, readLogs } = await loadLogFile()
 
   logFile.log('error', '', 'no prefix')
   logFile.log('error', 'prefix', 'with prefix')
