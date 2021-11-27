@@ -11,6 +11,18 @@ t.cleanSnapshot = (path) => cleanCwd(path)
 
 const last = arr => arr[arr.length - 1]
 const range = (n) => Array.from(Array(n).keys())
+const makeOldLogs = (count) => {
+  const d = new Date()
+  d.setHours(-1)
+  d.setSeconds(0)
+  return range(count / 2).reduce((acc, i) => {
+    const cloneDate = new Date(d.getTime())
+    cloneDate.setSeconds(i)
+    acc[LogFile.fileName(LogFile.logId(cloneDate), 0)] = 'hello'
+    acc[LogFile.fileName(LogFile.logId(cloneDate), 1)] = 'hello'
+    return acc
+  }, {})
+}
 
 const cleanErr = (message) => {
   const err = new Error(message)
@@ -168,16 +180,12 @@ t.test('turns off', async t => {
   t.equal(logs[0].logs[0], '0 error test')
 })
 
-t.skip('cleans logs', async t => {
+t.test('cleans logs', async t => {
   const logsMax = 5
-  const oldId = LogFile.logId()
   const { readLogs } = await loadLogFile({
     logsMax,
   }, {
-    testdir: range(10).reduce((acc, i) => {
-      acc[LogFile.fileName(oldId, i)] = 'hello'
-      return acc
-    }, {}),
+    testdir: makeOldLogs(10),
   })
 
   const logs = await readLogs()
@@ -187,14 +195,10 @@ t.skip('cleans logs', async t => {
 t.test('doesnt need to clean', async t => {
   const logsMax = 20
   const oldLogs = 10
-  const oldId = LogFile.logId()
   const { readLogs } = await loadLogFile({
     logsMax,
   }, {
-    testdir: range(oldLogs).reduce((acc, i) => {
-      acc[LogFile.fileName(oldId, i)] = 'hello'
-      return acc
-    }, {}),
+    testdir: makeOldLogs(oldLogs),
   })
 
   const logs = await readLogs()
@@ -213,21 +217,18 @@ t.test('glob error', async t => {
   })
 
   const logs = await readLogs()
+  t.equal(logs.length, 1)
   t.match(last(logs).content, /error cleaning log files .* bad glob/)
 })
 
 t.test('rimraf error', async t => {
   const logsMax = 5
   const oldLogs = 10
-  const oldId = LogFile.logId()
   let count = 0
   const { readLogs } = await loadLogFile({
     logsMax,
   }, {
-    testdir: range(oldLogs).reduce((acc, i) => {
-      acc[LogFile.fileName(oldId, i)] = 'hello'
-      return acc
-    }, {}),
+    testdir: makeOldLogs(oldLogs),
     mocks: {
       rimraf: (...args) => {
         if (count >= 3) {
