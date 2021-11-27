@@ -192,6 +192,36 @@ t.test('cleans logs', async t => {
   t.equal(logs.length, logsMax + 1)
 })
 
+t.test('doesnt clean current log by default', async t => {
+  const logsMax = 0
+  const { readLogs, logFile } = await loadLogFile({
+    logsMax,
+  }, {
+    testdir: makeOldLogs(10),
+  })
+
+  logFile.log('error', 'test')
+
+  const logs = await readLogs()
+  t.equal(logs.length, 1)
+  t.match(last(logs).content, /\d+ error test/)
+})
+
+t.test('negative logs max', async t => {
+  const logsMax = -10
+  const { readLogs, logFile } = await loadLogFile({
+    logsMax,
+  }, {
+    testdir: makeOldLogs(10),
+  })
+
+  logFile.log('error', 'test')
+
+  const logs = await readLogs()
+  t.equal(logs.length, 1)
+  t.match(last(logs).content, /\d+ error test/)
+})
+
 t.test('doesnt need to clean', async t => {
   const logsMax = 20
   const oldLogs = 10
