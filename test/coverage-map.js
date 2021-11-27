@@ -11,6 +11,9 @@ const coverageMap = (filename) => {
     // this one doesn't provide any coverage nyc can track
     return []
   }
+  if (/^test\/lib\/fixtures\//.test(filename)) {
+    return filename.replace(/\/lib\//, '/')
+  }
   if (/^test\/(lib\/|bin\/|index\.js$)/.test(filename)) {
     return filename.replace(/^test\//, '')
   }
