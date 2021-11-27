@@ -33,10 +33,10 @@ const cleanErr = (message) => {
   return err
 }
 
-const loadLogFile = async (options, { buffer = [], mocks, testdir = {} } = {}) => {
+const loadLogFile = async (t, { buffer = [], mocks, testdir = {}, ...options } = {}) => {
   const root = t.testdir(testdir)
   const MockLogFile = t.mock('../../../lib/utils/log-file.js', mocks)
-  const logFile = new MockLogFile(options)
+  const logFile = new MockLogFile(Object.keys(options).length ? options : undefined)
   buffer.forEach((b) => logFile.log(...b))
   await logFile.load({ dir: root, ...options })
   t.teardown(() => logFile.off())
@@ -62,10 +62,9 @@ const loadLogFile = async (options, { buffer = [], mocks, testdir = {} } = {}) =
 
 t.test('init', async t => {
   const maxLogsPerFile = 10
-  const { root, logFile, readLogs } = await loadLogFile({
+  const { root, logFile, readLogs } = await loadLogFile(t, {
     maxLogsPerFile,
     maxFilesPerProcess: 20,
-  }, {
     buffer: [['error', 'buffered']],
   })
 
@@ -99,7 +98,7 @@ t.test('init', async t => {
 t.test('max files per process', async t => {
   const maxLogsPerFile = 10
   const maxFilesPerProcess = 5
-  const { logFile, readLogs } = await loadLogFile({
+  const { logFile, readLogs } = await loadLogFile(t, {
     maxLogsPerFile,
     maxFilesPerProcess,
   })
@@ -119,10 +118,9 @@ t.test('max files per process', async t => {
 
 t.test('stream error', async t => {
   let times = 0
-  const { logFile, readLogs } = await loadLogFile({
+  const { logFile, readLogs } = await loadLogFile(t, {
     maxLogsPerFile: 1,
     maxFilesPerProcess: 99,
-  }, {
     mocks: {
       'fs-minipass': {
         WriteStreamSync: class {
@@ -147,7 +145,7 @@ t.test('stream error', async t => {
 })
 
 t.test('initial stream error', async t => {
-  const { logFile, readLogs } = await loadLogFile({}, {
+  const { logFile, readLogs } = await loadLogFile(t, {
     mocks: {
       'fs-minipass': {
         WriteStreamSync: class {
@@ -168,7 +166,7 @@ t.test('initial stream error', async t => {
 })
 
 t.test('turns off', async t => {
-  const { logFile, readLogs } = await loadLogFile()
+  const { logFile, readLogs } = await loadLogFile(t)
 
   logFile.log('error', 'test')
   logFile.off()
@@ -182,9 +180,8 @@ t.test('turns off', async t => {
 
 t.test('cleans logs', async t => {
   const logsMax = 5
-  const { readLogs } = await loadLogFile({
+  const { readLogs } = await loadLogFile(t, {
     logsMax,
-  }, {
     testdir: makeOldLogs(10),
   })
 
@@ -194,9 +191,8 @@ t.test('cleans logs', async t => {
 
 t.test('doesnt clean current log by default', async t => {
   const logsMax = 0
-  const { readLogs, logFile } = await loadLogFile({
+  const { readLogs, logFile } = await loadLogFile(t, {
     logsMax,
-  }, {
     testdir: makeOldLogs(10),
   })
 
@@ -209,9 +205,8 @@ t.test('doesnt clean current log by default', async t => {
 
 t.test('negative logs max', async t => {
   const logsMax = -10
-  const { readLogs, logFile } = await loadLogFile({
+  const { readLogs, logFile } = await loadLogFile(t, {
     logsMax,
-  }, {
     testdir: makeOldLogs(10),
   })
 
@@ -225,9 +220,8 @@ t.test('negative logs max', async t => {
 t.test('doesnt need to clean', async t => {
   const logsMax = 20
   const oldLogs = 10
-  const { readLogs } = await loadLogFile({
+  const { readLogs } = await loadLogFile(t, {
     logsMax,
-  }, {
     testdir: makeOldLogs(oldLogs),
   })
 
@@ -236,9 +230,8 @@ t.test('doesnt need to clean', async t => {
 })
 
 t.test('glob error', async t => {
-  const { readLogs } = await loadLogFile({
+  const { readLogs } = await loadLogFile(t, {
     logsMax: 5,
-  }, {
     mocks: {
       glob: () => {
         throw new Error('bad glob')
@@ -255,9 +248,8 @@ t.test('rimraf error', async t => {
   const logsMax = 5
   const oldLogs = 10
   let count = 0
-  const { readLogs } = await loadLogFile({
+  const { readLogs } = await loadLogFile(t, {
     logsMax,
-  }, {
     testdir: makeOldLogs(oldLogs),
     mocks: {
       rimraf: (...args) => {
@@ -276,7 +268,7 @@ t.test('rimraf error', async t => {
 })
 
 t.test('snapshot', async t => {
-  const { logFile, readLogs } = await loadLogFile()
+  const { logFile, readLogs } = await loadLogFile(t)
 
   logFile.log('error', '', 'no prefix')
   logFile.log('error', 'prefix', 'with prefix')
