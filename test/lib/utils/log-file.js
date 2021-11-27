@@ -9,17 +9,17 @@ const { cleanCwd } = require('../../fixtures/clean-snapshot')
 
 t.cleanSnapshot = (path) => cleanCwd(path)
 
+const last = arr => arr[arr.length - 1]
+const range = (n) => Array.from(Array(n).keys())
+
 const cleanErr = (message) => {
   const err = new Error(message)
-  err.stack = err.stack
-    .split('\n')
-    .map((l, i) => l.replace(/^(\s+at\s).*/, `$1stack trace line ${i}`))
+  const stack = err.stack.split('\n')
+  err.stack = stack[0] + '\n' + range(10)
+    .map((__, i) => stack[1].replace(/^(\s+at\s).*/, `$1stack trace line ${i}`))
     .join('\n')
   return err
 }
-
-const last = arr => arr[arr.length - 1]
-const range = (n) => Array.from(Array(n).keys())
 
 const loadLogFile = async (options, { buffer = [], mocks, testdir = {} } = {}) => {
   const root = t.testdir(testdir)
@@ -168,7 +168,7 @@ t.test('turns off', async t => {
   t.equal(logs[0].logs[0], '0 error test')
 })
 
-t.skip('clean', async t => {
+t.test('clean', async t => {
   t.test('cleans logs', async t => {
     const logsMax = 5
     const oldId = LogFile.logId()
@@ -190,7 +190,7 @@ t.skip('clean', async t => {
     const logsMax = 20
     const oldLogs = 10
     const oldId = LogFile.logId()
-    const {  readLogs } = await loadLogFile({
+    const { readLogs } = await loadLogFile({
       logsMax,
     }, {
       testdir: range(oldLogs).reduce((acc, i) => {
@@ -205,7 +205,7 @@ t.skip('clean', async t => {
   })
 
   t.test('glob error', async t => {
-    const { cleanLogs, readLogs } = await loadLogFile({
+    const { readLogs } = await loadLogFile({
       logsMax: 5,
     }, {
       mocks: {

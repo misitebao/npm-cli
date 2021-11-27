@@ -43,6 +43,17 @@ exports[`test/lib/utils/log-file.js TAP snapshot > must match snapshot 1`] = `
 11 verbose   ]
 11 verbose ]
 12 error pre has many errors Error: message
+12 error pre     at stack trace line 0
+12 error pre     at stack trace line 1
+12 error pre     at stack trace line 2
+12 error pre     at stack trace line 3
+12 error pre     at stack trace line 4
+12 error pre     at stack trace line 5
+12 error pre     at stack trace line 6
+12 error pre     at stack trace line 7
+12 error pre     at stack trace line 8
+12 error pre     at stack trace line 9 Error: message2
+12 error pre     at stack trace line 0
 12 error pre     at stack trace line 1
 12 error pre     at stack trace line 2
 12 error pre     at stack trace line 3
@@ -52,17 +63,6 @@ exports[`test/lib/utils/log-file.js TAP snapshot > must match snapshot 1`] = `
 12 error pre     at stack trace line 7
 12 error pre     at stack trace line 8
 12 error pre     at stack trace line 9
-12 error pre     at stack trace line 10 Error: message2
-12 error pre     at stack trace line 1
-12 error pre     at stack trace line 2
-12 error pre     at stack trace line 3
-12 error pre     at stack trace line 4
-12 error pre     at stack trace line 5
-12 error pre     at stack trace line 6
-12 error pre     at stack trace line 7
-12 error pre     at stack trace line 8
-12 error pre     at stack trace line 9
-12 error pre     at stack trace line 10
 13 error nostack [Error: message]
 
 `
